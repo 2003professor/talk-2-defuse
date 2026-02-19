@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talk 2 Defuse — Cooperative Bomb Defusal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- ══════════════════════ LANDING PAGE ══════════════════════ -->
+  <div id="screen-landing" class="screen active">
+    <canvas id="landing-bg" class="landing-bg"></canvas>
+    <div class="hazard-stripe hazard-top"></div>
+    <button id="btn-music-toggle" class="btn-music-toggle" title="Toggle music" aria-label="Toggle music">&#9834;</button>
+    <button id="btn-fullscreen" class="btn-fullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">
+      <svg class="fs-icon fs-expand" viewBox="0 0 20 20" width="18" height="18"><path d="M3 3h5v2H5v3H3V3zm9 0h5v5h-2V5h-3V3zM3 12h2v3h3v2H3v-5zm12 3h-3v2h5v-5h-2v3z" fill="currentColor"/></svg>
+      <svg class="fs-icon fs-compress hidden" viewBox="0 0 20 20" width="18" height="18"><path d="M5 8H3V3h5v2H5v3zm10-3h-3V3h5v5h-2V5zM5 12v3h3v2H3v-5h2zm10 3v-3h2v5h-5v-2h3z" fill="currentColor"/></svg>
+    </button>
+
+    <div class="landing-hero">
+      <!-- Bomb SVG illustration -->
+      <div class="hero-bomb-svg">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="120" height="140">
+          <!-- Bomb body -->
+          <circle cx="60" cy="80" r="44" fill="none" stroke="rgba(230,237,243,0.25)" stroke-width="2.5"/>
+          <circle cx="60" cy="80" r="44" fill="none" stroke="rgba(240,136,62,0.08)" stroke-width="8"/>
+          <!-- Highlight arc -->
+          <path d="M 32 58 A 44 44 0 0 1 72 40" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3" stroke-linecap="round"/>
+          <!-- Fuse neck -->
+          <rect x="54" y="32" width="12" height="14" rx="2" fill="none" stroke="rgba(230,237,243,0.2)" stroke-width="2"/>
+          <!-- Fuse line -->
+          <path d="M 60 32 Q 62 22, 72 18 Q 82 14, 78 6" fill="none" stroke="rgba(230,237,243,0.18)" stroke-width="2" stroke-linecap="round"/>
+          <!-- Fuse spark glow -->
+          <circle cx="78" cy="6" r="5" class="fuse-glow-outer"/>
+          <circle cx="78" cy="6" r="3" class="fuse-glow-inner"/>
+        </svg>
+      </div>
+
+      <h1 class="game-title">TALK <span class="amp">2</span> DEFUSE</h1>
+      <p class="tagline">Defuse. Communicate. Survive.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="landing-panels">
+      <div class="landing-panel-left">
+        <div class="action-card">
+          <div class="form-group">
+            <label for="player-name">CALLSIGN</label>
+            <input type="text" id="player-name" placeholder="Enter your callsign" maxlength="20" autocomplete="off">
+          </div>
+          <div class="landing-buttons">
+            <button id="btn-create" class="btn btn-deploy" disabled>DEPLOY</button>
+            <div class="divider-line"><span>or</span></div>
+            <div class="join-section-label">JOIN OPERATION</div>
+            <div class="join-row">
+              <input type="text" id="room-code-input" placeholder="CODE" maxlength="4" pattern="[0-9]{4}" autocomplete="off">
+              <button id="btn-join" class="btn btn-secondary" disabled>Join</button>
+            </div>
+          </div>
+          <p id="landing-error" class="error-msg hidden"></p>
+          <div class="how-to-play-landing">
+            <button id="btn-how-to-play" class="btn btn-link">How to Play</button>
+          </div>
+        </div>
+        <button id="btn-leaderboard-show" class="leaderboard-show hidden">Show Leaderboard</button>
+      </div>
+
+      <div id="landing-panel-right" class="landing-panel-right">
+        <div id="landing-scoreboard" class="landing-scoreboard">
+          <div class="scoreboard-header">
+            <h2 class="scoreboard-title">TOP OPERATIVES</h2>
+            <p class="scoreboard-subtitle">Leaderboard</p>
+            <button id="btn-leaderboard-toggle" class="leaderboard-toggle" title="Hide leaderboard">&times;</button>
+          </div>
+          <div id="scoreboard-body" class="scoreboard-body">
+            <p class="scoreboard-loading">Loading...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hazard-stripe hazard-bottom"></div>
+  </div>
+
+  <!-- ══════════════════════ HOW TO PLAY MODAL ══════════════════════ -->
+  <div id="modal-help" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2>How to Play</h2>
+      <div class="help-section">
+        <h3>Two Roles, One Mission</h3>
+        <p><strong>The Executor</strong> sees the bomb — wires, buttons, keypads — but has NO manual.</p>
+        <p><strong>The Instructor</strong> has the bomb defusal manual but CANNOT see the bomb.</p>
+        <p>You must communicate through the chat to defuse the bomb before time runs out!</p>
+      </div>
+      <div class="help-section">
+        <h3>Step by Step</h3>
+        <ol>
+          <li><strong>Describe</strong> — The Executor describes what they see (bomb shape, size, colors, modules).</li>
+          <li><strong>Identify</strong> — The Instructor looks up the bomb type in the Index tab.</li>
+          <li><strong>Instruct</strong> — The Instructor reads the manual and gives step-by-step defusal instructions.</li>
+          <li><strong>Execute</strong> — The Executor follows the instructions carefully. Click components to interact.</li>
+        </ol>
+      </div>
+      <div class="help-section">
+        <h3>Tips</h3>
+        <ul>
+          <li>Hover over bomb components to see labels — use these to describe clearly.</li>
+          <li>A confirmation popup appears before each action — take a moment to verify.</li>
+          <li>Wrong actions cause strikes. Too many strikes = explosion!</li>
+          <li>Watch the timer — it changes color as time runs low.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ LOBBY ══════════════════════ -->
+  <div id="screen-lobby" class="screen">
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <h1 class="game-title-small">TALK <span class="amp">2</span> DEFUSE</h1>
+        <div class="room-code-display">
+          Room: <span id="lobby-room-code" class="code-highlight">----</span>
+          <button id="btn-copy-code" class="btn btn-tiny" title="Copy room code">Copy</button>
+        </div>
+      </div>
+
+      <div class="lobby-body">
+        <div class="lobby-players">
+          <h2>Players</h2>
+          <div id="player-slots" class="player-slots">
+            <!-- Filled dynamically -->
+          </div>
+        </div>
+
+        <div class="lobby-settings">
+          <h2>Choose Your Role</h2>
+          <div class="role-select">
+            <button class="btn btn-role" data-role="instructor">
+              <span class="role-icon">📖</span>
+              <span class="role-name">Instructor</span>
+              <span class="role-desc">Read the manual, give instructions</span>
+            </button>
+            <button class="btn btn-role" data-role="executor">
+              <span class="role-icon">💣</span>
+              <span class="role-name">Executor</span>
+              <span class="role-desc">See the bomb, follow instructions</span>
+            </button>
+          </div>
+
+          <h2>Difficulty</h2>
+          <div class="difficulty-select">
+            <button class="btn btn-diff active" data-diff="easy">
+              <strong>Easy</strong>
+              <span>Wires · 5 min · 3 strikes</span>
+            </button>
+            <button class="btn btn-diff" data-diff="medium">
+              <strong>Medium</strong>
+              <span>Wires+Button+Keypad · 4 min · 3 strikes</span>
+            </button>
+            <button class="btn btn-diff" data-diff="hard">
+              <strong>Hard</strong>
+              <span>5 modules · 3 min · Mistakes speed up timer</span>
+            </button>
+            <button class="btn btn-diff" data-diff="custom">
+              <strong>Custom</strong>
+              <span>Configure your own</span>
+            </button>
+          </div>
+
+          <div id="custom-settings" class="custom-settings hidden">
+            <h3>Custom Settings</h3>
+            <div class="custom-row">
+              <label>Timer (seconds)</label>
+              <div class="custom-slider-row">
+                <input type="range" id="custom-timer" min="60" max="600" value="300" step="10">
+                <span class="custom-val" id="custom-timer-val">300</span>
+              </div>
+            </div>
+            <div class="custom-row">
+              <label>Max Strikes</label>
+              <div class="custom-slider-row">
+                <input type="range" id="custom-strikes" min="1" max="5" value="3">
+                <span class="custom-val" id="custom-strikes-val">3</span>
+              </div>
+            </div>
+            <div class="custom-row">
+              <label>Wire Count</label>
+              <div class="custom-slider-row">
+                <input type="range" id="custom-wires" min="3" max="6" value="4">
+                <span class="custom-val" id="custom-wires-val">4</span>
+              </div>
+            </div>
+            <div class="custom-row">
+              <label>Modules</label>
+              <div class="custom-checkboxes">
+                <label class="custom-checkbox disabled"><input type="checkbox" checked disabled> Wires</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-button" checked> Button</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-keypad" checked> Keypad</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-simon"> Simon Says</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-morse"> Morse Code</label>
+              </div>
+            </div>
+            <div class="custom-row">
+              <label>Sequence Enforcement</label>
+              <div class="custom-toggle-row">
+                <span class="toggle-hint">Wrong order = strike</span>
+                <label class="toggle-switch"><input type="checkbox" id="custom-sequence" checked><span class="toggle-slider"></span></label>
+              </div>
+            </div>
+            <div class="custom-row">
+              <label>Strike Timer Speedup</label>
+              <div class="custom-toggle-row">
+                <span class="toggle-hint">Strikes speed up timer</span>
+                <label class="toggle-switch"><input type="checkbox" id="custom-speedup" checked><span class="toggle-slider"></span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lobby-footer">
+        <button id="btn-ready" class="btn btn-primary btn-large" disabled>Ready</button>
+        <p id="lobby-status" class="status-text">Waiting for partner...</p>
+        <button id="btn-leave-lobby" class="btn btn-link" style="margin-top:12px;color:var(--accent-red);">Leave Room</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ BRIEFING ══════════════════════ -->
+  <div id="screen-briefing" class="screen">
+    <div class="briefing-container">
+      <h1 class="game-title-small">TALK <span class="amp">2</span> DEFUSE</h1>
+      <div class="briefing-card">
+        <h2>Mission Briefing</h2>
+        <p id="briefing-role-text"></p>
+        <div class="briefing-rules">
+          <p><strong>Rules:</strong></p>
+          <ul>
+            <li>Neither player can see the other's screen.</li>
+            <li>Communicate ONLY through the chat panel.</li>
+            <li>The Executor describes what they see on the bomb.</li>
+            <li>The Instructor finds the right manual page and gives precise instructions.</li>
+            <li>Wrong actions cause strikes — too many and the bomb explodes!</li>
+          </ul>
+        </div>
+        <button id="btn-briefing-ready" class="btn btn-primary btn-large pulse">Ready</button>
+        <p id="briefing-status" class="status-text"></p>
+      </div>
+      <div id="countdown-overlay" class="countdown-overlay hidden">
+        <div class="countdown-ring countdown-ring-1"></div>
+        <div class="countdown-ring countdown-ring-2"></div>
+        <div class="countdown-ring countdown-ring-3"></div>
+        <div id="countdown-number" class="countdown-number"></div>
+        <div id="countdown-label" class="countdown-label"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ GAME SCREEN ══════════════════════ -->
+  <div id="screen-game" class="screen">
+    <div class="game-layout">
+      <!-- Top Status Bar -->
+      <div class="game-topbar">
+        <div class="topbar-left">
+          <span class="topbar-title">TALK 2 DEFUSE</span>
+          <span id="game-bomb-type" class="bomb-type-badge">Bomb: ???</span>
+          <span id="game-module-count" class="module-badge"></span>
+        </div>
+        <div class="topbar-center">
+          <div id="game-timer" class="timer-display">05:00</div>
+        </div>
+        <div class="topbar-right">
+          <div id="game-strikes" class="strikes-display"></div>
+          <button id="btn-help-ingame" class="btn btn-tiny" aria-label="Help">?</button>
+          <button id="btn-fullscreen-game" class="btn-fullscreen-sm" title="Toggle fullscreen" aria-label="Toggle fullscreen">
+            <svg class="fs-icon fs-expand" viewBox="0 0 20 20" width="16" height="16"><path d="M3 3h5v2H5v3H3V3zm9 0h5v5h-2V5h-3V3zM3 12h2v3h3v2H3v-5zm12 3h-3v2h5v-5h-2v3z" fill="currentColor"/></svg>
+            <svg class="fs-icon fs-compress hidden" viewBox="0 0 20 20" width="16" height="16"><path d="M5 8H3V3h5v2H5v3zm10-3h-3V3h5v5h-2V5zM5 12v3h3v2H3v-5h2zm10 3v-3h2v5h-5v-2h3z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Area (split) -->
+      <div class="game-main">
+        <!-- Left: Bomb / Manual -->
+        <div id="game-content" class="game-content">
+          <!-- Filled by JS depending on role -->
+        </div>
+
+        <!-- Right: Chat Panel -->
+        <div class="chat-panel">
+          <div class="chat-header">CHAT</div>
+          <div id="chat-messages" class="chat-messages">
+            <!-- Messages injected here -->
+          </div>
+          <div id="chat-new-badge" class="chat-new-badge hidden">New message ↓</div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Type here..." maxlength="200" autocomplete="off">
+            <span id="chat-char-count" class="char-count">200</span>
+            <button id="btn-send-chat" class="btn btn-send" aria-label="Send">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ RESULT SCREEN ══════════════════════ -->
+  <div id="screen-result" class="screen">
+    <div class="result-container">
+      <div id="result-icon" class="result-icon"></div>
+      <h1 id="result-title" class="result-title"></h1>
+      <p id="result-reason" class="result-reason"></p>
+      <div id="result-score" class="result-score hidden"></div>
+      <div id="result-stats" class="result-stats"></div>
+      <div class="result-actions">
+        <button id="btn-play-again" class="btn btn-primary btn-large">Play Again</button>
+        <button id="btn-change-difficulty" class="btn btn-secondary">Change Difficulty</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ CONFIRMATION TOOLTIP ══════════════════════ -->
+  <div id="confirm-tooltip" class="confirm-tooltip hidden">
+    <p id="confirm-text"></p>
+    <div class="confirm-buttons">
+      <button id="confirm-yes" class="btn btn-confirm-yes">Confirm</button>
+      <button id="confirm-no" class="btn btn-confirm-no">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ STRIKE FLASH OVERLAY ══════════════════════ -->
+  <div id="strike-flash" class="strike-flash hidden"></div>
+
+  <!-- ══════════════════════ EXPLOSION OVERLAY ══════════════════════ -->
+  <div id="explosion-overlay" class="explosion-overlay hidden">
+    <div class="explosion-flash"></div>
+    <div class="explosion-drip drip-1"></div>
+    <div class="explosion-drip drip-2"></div>
+    <div class="explosion-drip drip-3"></div>
+    <div class="explosion-drip drip-4"></div>
+    <div class="explosion-drip drip-5"></div>
+    <div class="explosion-drip drip-6"></div>
+    <div class="explosion-drip drip-7"></div>
+  </div>
+
+  <!-- Notification toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/landing-bg.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

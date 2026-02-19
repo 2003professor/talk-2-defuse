@@ -21,6 +21,76 @@ let customSettings = {
   sequenceEnforcement: true, strikeSpeedup: true,
 };
 
+// ── Settings ─────────────────────────────────────────────────────
+const DEFAULT_SETTINGS = {
+  masterVolume: 100,
+  sfxVolume: 100,
+  musicVolume: 100,
+  screenShake: true,
+  reducedMotion: false,
+  colorblind: false,
+  chatFontSize: 'medium',
+  showTimestamps: true,
+  actionConfirmations: true,
+};
+let settings = { ...DEFAULT_SETTINGS };
+let _prevMusicVolume = 100; // for music toggle restore
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('gameSettings');
+    if (raw) {
+      const saved = JSON.parse(raw);
+      settings = { ...DEFAULT_SETTINGS, ...saved };
+    }
+    // Migrate legacy musicMuted flag
+    const legacyMuted = localStorage.getItem('musicMuted');
+    if (legacyMuted !== null) {
+      if (legacyMuted === 'true' && settings.musicVolume > 0) {
+        settings.musicVolume = 0;
+      }
+      localStorage.removeItem('musicMuted');
+      saveSettings();
+    }
+  } catch (_) {
+    settings = { ...DEFAULT_SETTINGS };
+  }
+}
+
+function saveSettings() {
+  try { localStorage.setItem('gameSettings', JSON.stringify(settings)); } catch (_) {}
+}
+
+function applySettings() {
+  // Audio
+  AudioFX.setMasterVolume(settings.masterVolume / 100);
+  AudioFX.setSfxVolume(settings.sfxVolume / 100);
+  AudioFX.setMusicVolume(settings.musicVolume / 100);
+
+  // Visual
+  document.body.classList.toggle('colorblind', settings.colorblind);
+  document.body.classList.toggle('reduced-motion', settings.reducedMotion);
+
+  // Chat
+  const chatEl = document.getElementById('chat-messages');
+  if (chatEl) {
+    chatEl.classList.remove('chat-sm', 'chat-md', 'chat-lg');
+    if (settings.chatFontSize === 'small') chatEl.classList.add('chat-sm');
+    else if (settings.chatFontSize === 'large') chatEl.classList.add('chat-lg');
+    else chatEl.classList.add('chat-md');
+    chatEl.classList.toggle('chat-hide-timestamps', !settings.showTimestamps);
+  }
+
+  // Music toggle button sync
+  const musicBtn = document.getElementById('btn-music-toggle');
+  if (musicBtn) {
+    musicBtn.classList.toggle('muted', settings.musicVolume === 0);
+  }
+}
+
+// Load settings immediately
+loadSettings();
+
 // ── DOM / Screens ───────────────────────────────────────────────
 const screens = {
   landing: document.getElementById('screen-landing'),
@@ -82,23 +152,103 @@ document.getElementById('btn-how-to-play').addEventListener('click', () => docum
 document.querySelector('#modal-help .modal-close').addEventListener('click', () => document.getElementById('modal-help').classList.add('hidden'));
 document.querySelector('#modal-help .modal-backdrop').addEventListener('click', () => document.getElementById('modal-help').classList.add('hidden'));
 document.getElementById('btn-help-ingame').addEventListener('click', () => document.getElementById('modal-help').classList.remove('hidden'));
+document.getElementById('btn-help-lobby').addEventListener('click', () => document.getElementById('modal-help').classList.remove('hidden'));
+
+// Settings modal
+function syncSettingsUI() {
+  document.getElementById('setting-master-vol').value = settings.masterVolume;
+  document.getElementById('setting-master-vol-val').textContent = settings.masterVolume;
+  document.getElementById('setting-sfx-vol').value = settings.sfxVolume;
+  document.getElementById('setting-sfx-vol-val').textContent = settings.sfxVolume;
+  document.getElementById('setting-music-vol').value = settings.musicVolume;
+  document.getElementById('setting-music-vol-val').textContent = settings.musicVolume;
+  document.getElementById('setting-screen-shake').checked = settings.screenShake;
+  document.getElementById('setting-reduced-motion').checked = settings.reducedMotion;
+  document.getElementById('setting-colorblind').checked = settings.colorblind;
+  document.querySelectorAll('input[name="setting-chat-size"]').forEach(r => { r.checked = r.value === settings.chatFontSize; });
+  document.getElementById('setting-show-timestamps').checked = settings.showTimestamps;
+  document.getElementById('setting-action-confirmations').checked = settings.actionConfirmations;
+}
+
+function openSettingsModal() {
+  syncSettingsUI();
+  document.getElementById('modal-settings').classList.remove('hidden');
+}
+function closeSettingsModal() {
+  document.getElementById('modal-settings').classList.add('hidden');
+}
+
+document.getElementById('btn-settings-landing').addEventListener('click', openSettingsModal);
+document.getElementById('btn-settings-ingame').addEventListener('click', openSettingsModal);
+document.querySelector('#modal-settings .modal-close').addEventListener('click', closeSettingsModal);
+document.querySelector('#modal-settings .modal-backdrop').addEventListener('click', closeSettingsModal);
+
+// Settings change listeners — instant apply, no save button
+['setting-master-vol', 'setting-sfx-vol', 'setting-music-vol'].forEach(id => {
+  const el = document.getElementById(id);
+  const valEl = document.getElementById(id + '-val');
+  const key = id === 'setting-master-vol' ? 'masterVolume' : id === 'setting-sfx-vol' ? 'sfxVolume' : 'musicVolume';
+  el.addEventListener('input', () => {
+    const v = +el.value;
+    valEl.textContent = v;
+    settings[key] = v;
+    if (key === 'musicVolume' && v > 0) _prevMusicVolume = v;
+    saveSettings();
+    applySettings();
+    // Start/stop music based on music volume changes
+    if (key === 'musicVolume') {
+      if (v === 0) AudioFX.stopMenuMusic();
+      else if (!AudioFX.isMenuPlaying && (screens.landing.classList.contains('active') || screens.lobby.classList.contains('active'))) AudioFX.menuMusic();
+    }
+  });
+});
+
+['setting-screen-shake', 'setting-reduced-motion', 'setting-colorblind', 'setting-show-timestamps', 'setting-action-confirmations'].forEach(id => {
+  const el = document.getElementById(id);
+  const keyMap = {
+    'setting-screen-shake': 'screenShake',
+    'setting-reduced-motion': 'reducedMotion',
+    'setting-colorblind': 'colorblind',
+    'setting-show-timestamps': 'showTimestamps',
+    'setting-action-confirmations': 'actionConfirmations',
+  };
+  el.addEventListener('change', () => {
+    settings[keyMap[id]] = el.checked;
+    saveSettings();
+    applySettings();
+  });
+});
+
+document.querySelectorAll('input[name="setting-chat-size"]').forEach(r => {
+  r.addEventListener('change', () => {
+    settings.chatFontSize = r.value;
+    saveSettings();
+    applySettings();
+  });
+});
+
 
 // Music toggle
-let musicMuted = localStorage.getItem('musicMuted') === 'true';
 const btnMusicToggle = document.getElementById('btn-music-toggle');
-if (musicMuted) btnMusicToggle.classList.add('muted');
+btnMusicToggle.classList.toggle('muted', settings.musicVolume === 0);
 
 btnMusicToggle.addEventListener('click', () => {
-  musicMuted = !musicMuted;
-  localStorage.setItem('musicMuted', musicMuted);
-  btnMusicToggle.classList.toggle('muted', musicMuted);
-  if (musicMuted) AudioFX.stopMenuMusic();
-  else AudioFX.menuMusic();
+  if (settings.musicVolume > 0) {
+    _prevMusicVolume = settings.musicVolume;
+    settings.musicVolume = 0;
+    AudioFX.stopMenuMusic();
+  } else {
+    settings.musicVolume = _prevMusicVolume || 100;
+    AudioFX.menuMusic();
+  }
+  saveSettings();
+  applySettings();
+  syncSettingsUI();
 });
 
 // Start music on first user interaction on landing (if not muted)
 document.getElementById('screen-landing').addEventListener('click', () => {
-  if (!musicMuted) AudioFX.menuMusic();
+  if (settings.musicVolume > 0) AudioFX.menuMusic();
 }, { once: false });
 
 // Auto-load scoreboard on connect
@@ -140,7 +290,7 @@ document.getElementById('btn-leave-lobby').addEventListener('click', () => {
   nameInput.value = '';
   codeInput.value = '';
   updateLandingButtons();
-  if (!musicMuted) AudioFX.menuMusic();
+  if (settings.musicVolume > 0) AudioFX.menuMusic();
 });
 
 document.querySelectorAll('.btn-role').forEach(btn => {
@@ -326,7 +476,7 @@ socket.on('start-countdown', () => {
       numEl.style.animation = '';
 
       // Screen shake on GO
-      if (cls === 'cd-step-go') {
+      if (cls === 'cd-step-go' && settings.screenShake) {
         overlay.classList.add('cd-shake');
       }
 
@@ -504,6 +654,7 @@ function renderModule(mod, mi) {
         html += '<div class="wire-terminal wire-terminal-left"></div>';
         html += '<div class="wire-strand"></div>';
         html += '<div class="wire-terminal wire-terminal-right"></div>';
+        html += `<span class="wire-label">${cap(color)}</span>`;
         html += `<span class="wire-tooltip">${label}</span>`;
         html += '</div>';
       });
@@ -1386,7 +1537,7 @@ socket.on('game-over', (data) => {
     explosionOverlay.classList.remove('hidden');
     // Force reflow to restart animations
     void explosionOverlay.offsetWidth;
-    explosionOverlay.classList.add('active');
+    if (settings.screenShake) explosionOverlay.classList.add('active');
 
     // Transition to result screen after the flash
     setTimeout(() => {
@@ -1527,6 +1678,7 @@ const confirmNo = document.getElementById('confirm-no');
 let confirmCallback = null;
 
 function showConfirmation(e, text, onConfirm) {
+  if (!settings.actionConfirmations) { onConfirm(); return; }
   const x = e.clientX || (e.left + 60);
   const y = e.clientY || (e.top - 10);
   confirmText.textContent = text;
@@ -1551,6 +1703,7 @@ document.addEventListener('keydown', (e) => {
 
 // ══════════════════════ EFFECTS ══════════════════════
 function showStrikeFlash() {
+  if (!settings.screenShake) return;
   const f = document.getElementById('strike-flash');
   f.classList.remove('hidden'); f.offsetHeight; f.style.animation = 'none'; f.offsetHeight; f.style.animation = '';
   setTimeout(() => f.classList.add('hidden'), 500);
@@ -1647,3 +1800,6 @@ document.addEventListener('fullscreenchange', updateFullscreenIcons);
 // ══════════════════════ UTILITIES ══════════════════════
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+// ══════════════════════ INIT ══════════════════════
+applySettings();

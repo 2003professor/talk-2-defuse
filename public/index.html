@@ -15,6 +15,9 @@
     <canvas id="landing-bg" class="landing-bg"></canvas>
     <div class="hazard-stripe hazard-top"></div>
     <button id="btn-music-toggle" class="btn-music-toggle" title="Toggle music" aria-label="Toggle music">&#9834;</button>
+    <button id="btn-settings-landing" class="btn-settings" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor"><path d="M10 13a3 3 0 100-6 3 3 0 000 6zm7.93-2.49a1.06 1.06 0 00-.79-.61l-.56-.09a6.93 6.93 0 00-.4-.96l.33-.46a1.06 1.06 0 00-.09-1.34l-1.47-1.47a1.06 1.06 0 00-1.34-.09l-.46.33a6.93 6.93 0 00-.96-.4l-.09-.56a1.06 1.06 0 00-1.05-.86h-2.1a1.06 1.06 0 00-1.05.86l-.09.56c-.33.11-.65.24-.96.4l-.46-.33a1.06 1.06 0 00-1.34.09L3.58 7.05a1.06 1.06 0 00-.09 1.34l.33.46c-.16.31-.29.63-.4.96l-.56.09a1.06 1.06 0 00-.86 1.05v2.1c0 .5.35.93.86 1.05l.56.09c.11.33.24.65.4.96l-.33.46a1.06 1.06 0 00.09 1.34l1.47 1.47a1.06 1.06 0 001.34.09l.46-.33c.31.16.63.29.96.4l.09.56a1.06 1.06 0 001.05.86h2.1a1.06 1.06 0 001.05-.86l.09-.56c.33-.11.65-.24.96-.4l.46.33a1.06 1.06 0 001.34-.09l1.47-1.47a1.06 1.06 0 00.09-1.34l-.33-.46c.16-.31.29-.63.4-.96l.56-.09a1.06 1.06 0 00.86-1.05v-2.1c0-.5-.35-.93-.86-1.05z"/></svg>
+    </button>
     <button id="btn-fullscreen" class="btn-fullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">
       <svg class="fs-icon fs-expand" viewBox="0 0 20 20" width="18" height="18"><path d="M3 3h5v2H5v3H3V3zm9 0h5v5h-2V5h-3V3zM3 12h2v3h3v2H3v-5zm12 3h-3v2h5v-5h-2v3z" fill="currentColor"/></svg>
       <svg class="fs-icon fs-compress hidden" viewBox="0 0 20 20" width="18" height="18"><path d="M5 8H3V3h5v2H5v3zm10-3h-3V3h5v5h-2V5zM5 12v3h3v2H3v-5h2zm10 3v-3h2v5h-5v-2h3z" fill="currentColor"/></svg>
@@ -88,32 +91,272 @@
   <!-- ══════════════════════ HOW TO PLAY MODAL ══════════════════════ -->
   <div id="modal-help" class="modal hidden">
     <div class="modal-backdrop"></div>
+    <div class="modal-content modal-content-help">
+      <button class="modal-close" aria-label="Close">&times;</button>
+
+      <!-- Hero -->
+      <div class="help-hero">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="22" stroke="#d29922" stroke-width="2.5" fill="none"/>
+          <path d="M24 12v14l8 6" stroke="#f0883e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="24" cy="24" r="3" fill="#d29922"/>
+        </svg>
+        <div class="help-hero-text">
+          <h2>How to Play</h2>
+          <p>Communicate. Coordinate. Defuse.</p>
+        </div>
+      </div>
+
+      <!-- Concept -->
+      <div class="help-concept">
+        One player sees the <strong>bomb</strong>. The other has the <strong>manual</strong>. Neither has both. Talk through the chat to defuse it before time runs out.
+      </div>
+
+      <!-- Role Cards -->
+      <div class="help-roles">
+        <div class="help-role-card help-role-executor">
+          <div class="help-role-icon">
+            <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+              <rect x="10" y="16" width="36" height="26" rx="3" stroke="#f0883e" stroke-width="2" fill="rgba(240,136,62,0.08)"/>
+              <circle cx="22" cy="29" r="4" stroke="#f0883e" stroke-width="1.5" fill="none"/>
+              <line x1="30" y1="25" x2="40" y2="25" stroke="#f0883e" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="30" y1="29" x2="38" y2="29" stroke="#f0883e" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="30" y1="33" x2="42" y2="33" stroke="#f0883e" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M20 16v-4a8 8 0 0 1 16 0v4" stroke="#f0883e" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+          <h3>The Executor</h3>
+          <p>Sees the bomb with all its modules — wires, buttons, keypads, lights. Describes everything and performs actions.</p>
+          <span class="help-role-badge">Sees Bomb</span>
+        </div>
+        <div class="help-role-vs">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <rect x="4" y="4" width="28" height="18" rx="4" stroke="#d29922" stroke-width="1.5" fill="rgba(210,153,34,0.06)"/>
+            <path d="M10 28l6-6h-2" stroke="#d29922" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="rgba(210,153,34,0.06)"/>
+            <line x1="10" y1="10" x2="22" y2="10" stroke="#d29922" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <line x1="10" y1="14" x2="18" y2="14" stroke="#d29922" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <line x1="10" y1="18" x2="26" y2="18" stroke="#d29922" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+          </svg>
+          <span class="help-vs-label">CHAT</span>
+        </div>
+        <div class="help-role-card help-role-instructor">
+          <div class="help-role-icon">
+            <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+              <rect x="12" y="8" width="32" height="40" rx="2" stroke="#3fb950" stroke-width="2" fill="rgba(63,185,80,0.08)"/>
+              <line x1="18" y1="18" x2="38" y2="18" stroke="#3fb950" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="18" y1="24" x2="36" y2="24" stroke="#3fb950" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="18" y1="30" x2="34" y2="30" stroke="#3fb950" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="18" y1="36" x2="38" y2="36" stroke="#3fb950" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M12 8h6v6h-6z" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <h3>The Instructor</h3>
+          <p>Has the bomb defusal manual with rules for every module. Reads the manual and gives step-by-step instructions.</p>
+          <span class="help-role-badge help-badge-green">Has Manual</span>
+        </div>
+      </div>
+
+      <!-- Steps Flow -->
+      <h3 class="help-section-title">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 10h14M13 6l4 4-4 4" stroke="#d29922" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Game Flow
+      </h3>
+      <div class="help-steps">
+        <div class="help-step">
+          <div class="help-step-num">1</div>
+          <div class="help-step-body">
+            <strong>Describe</strong>
+            <span>Executor tells the Instructor what they see — bomb shape, color, serial number, module types.</span>
+          </div>
+        </div>
+        <div class="help-step-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M6 12l4 4 4-4" stroke="#30363d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">2</div>
+          <div class="help-step-body">
+            <strong>Identify</strong>
+            <span>Instructor looks up the bomb in the manual's Index tab to find its defusal protocol.</span>
+          </div>
+        </div>
+        <div class="help-step-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M6 12l4 4 4-4" stroke="#30363d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">3</div>
+          <div class="help-step-body">
+            <strong>Instruct</strong>
+            <span>Instructor reads the rules and tells the Executor exactly what to do for each module.</span>
+          </div>
+        </div>
+        <div class="help-step-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M6 12l4 4 4-4" stroke="#30363d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">4</div>
+          <div class="help-step-body">
+            <strong>Execute</strong>
+            <span>Executor clicks components to interact — cut wires, press buttons, enter codes. A confirmation popup verifies each action.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Tip -->
+      <div class="help-quicktip">
+        <strong>Pro tip:</strong> The Executor should start by reading the <em>serial number</em>, <em>bomb shape</em>, and <em>number of batteries</em> — the Instructor needs these to find the right page in the manual.
+      </div>
+
+      <!-- Modules -->
+      <h3 class="help-section-title">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="#d29922" stroke-width="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="#d29922" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="#d29922" stroke-width="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="#d29922" stroke-width="1.5"/></svg>
+        Bomb Modules
+      </h3>
+      <div class="help-modules">
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <line x1="4" y1="8" x2="28" y2="8" stroke="#dc3545" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="4" y1="16" x2="28" y2="16" stroke="#0d6efd" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="4" y1="24" x2="28" y2="24" stroke="#ffc107" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <strong>Wires</strong>
+          <span>Cut the right ones</span>
+        </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="6" y="6" width="20" height="20" rx="4" stroke="#0d6efd" stroke-width="2" fill="rgba(13,110,253,0.15)"/>
+            <circle cx="16" cy="16" r="5" fill="rgba(13,110,253,0.3)" stroke="#0d6efd" stroke-width="1.5"/>
+          </svg>
+          <strong>Button</strong>
+          <span>Press or hold</span>
+        </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="4" y="4" width="10" height="10" rx="2" stroke="#ffc107" stroke-width="1.5" fill="rgba(255,193,7,0.1)"/>
+            <rect x="18" y="4" width="10" height="10" rx="2" stroke="#ffc107" stroke-width="1.5" fill="rgba(255,193,7,0.1)"/>
+            <rect x="4" y="18" width="10" height="10" rx="2" stroke="#ffc107" stroke-width="1.5" fill="rgba(255,193,7,0.1)"/>
+            <rect x="18" y="18" width="10" height="10" rx="2" stroke="#ffc107" stroke-width="1.5" fill="rgba(255,193,7,0.1)"/>
+            <text x="9" y="12" text-anchor="middle" font-size="8" fill="#ffc107">&#x2603;</text>
+            <text x="23" y="12" text-anchor="middle" font-size="8" fill="#ffc107">&#x2622;</text>
+            <text x="9" y="26" text-anchor="middle" font-size="8" fill="#ffc107">&#x2660;</text>
+            <text x="23" y="26" text-anchor="middle" font-size="8" fill="#ffc107">&#x263A;</text>
+          </svg>
+          <strong>Keypad</strong>
+          <span>Correct symbol order</span>
+        </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="11" cy="11" r="6" fill="rgba(220,53,69,0.25)" stroke="#dc3545" stroke-width="1.5"/>
+            <circle cx="21" cy="11" r="6" fill="rgba(13,110,253,0.25)" stroke="#0d6efd" stroke-width="1.5"/>
+            <circle cx="11" cy="21" r="6" fill="rgba(25,135,84,0.25)" stroke="#198754" stroke-width="1.5"/>
+            <circle cx="21" cy="21" r="6" fill="rgba(255,193,7,0.25)" stroke="#ffc107" stroke-width="1.5"/>
+          </svg>
+          <strong>Simon Says</strong>
+          <span>Repeat the pattern</span>
+        </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="14" r="8" stroke="#f0883e" stroke-width="2" fill="none"/>
+            <circle cx="16" cy="14" r="3" fill="#f0883e" opacity="0.6"/>
+            <line x1="8" y1="26" x2="12" y2="26" stroke="#f0883e" stroke-width="2" stroke-linecap="round"/>
+            <line x1="15" y1="26" x2="17" y2="26" stroke="#f0883e" stroke-width="2" stroke-linecap="round"/>
+            <line x1="20" y1="26" x2="24" y2="26" stroke="#f0883e" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <strong>Morse Code</strong>
+          <span>Decode the signal</span>
+        </div>
+      </div>
+
+      <!-- Warnings -->
+      <div class="help-warnings">
+        <div class="help-warning">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L1 18h18L10 2z" stroke="#f85149" stroke-width="1.5" fill="rgba(248,81,73,0.1)"/><line x1="10" y1="8" x2="10" y2="12" stroke="#f85149" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="15" r="1" fill="#f85149"/></svg>
+          <div><strong>Strikes</strong> — Wrong actions add strikes. Too many and the bomb explodes!</div>
+        </div>
+        <div class="help-warning">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#d29922" stroke-width="1.5" fill="rgba(210,153,34,0.1)"/><path d="M10 5v6l4 2" stroke="#d29922" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><strong>Timer</strong> — Turns red when time is low. Strikes may speed up the countdown!</div>
+        </div>
+        <div class="help-warning">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="6" width="16" height="10" rx="2" stroke="#58a6ff" stroke-width="1.5" fill="rgba(88,166,255,0.1)"/><path d="M2 6l8 5 8-5" stroke="#58a6ff" stroke-width="1.5" fill="none"/></svg>
+          <div><strong>Communication is key</strong> — Be specific. Use labels, colors, positions. Don't assume!</div>
+        </div>
+      </div>
+
+      <div class="help-footer">
+        Good luck, agents. The clock is ticking.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════ SETTINGS MODAL ══════════════════════ -->
+  <div id="modal-settings" class="modal hidden">
+    <div class="modal-backdrop"></div>
     <div class="modal-content">
       <button class="modal-close" aria-label="Close">&times;</button>
-      <h2>How to Play</h2>
-      <div class="help-section">
-        <h3>Two Roles, One Mission</h3>
-        <p><strong>The Executor</strong> sees the bomb — wires, buttons, keypads — but has NO manual.</p>
-        <p><strong>The Instructor</strong> has the bomb defusal manual but CANNOT see the bomb.</p>
-        <p>You must communicate through the chat to defuse the bomb before time runs out!</p>
+      <h2>Settings</h2>
+
+      <div class="settings-section">
+        <h3>Audio</h3>
+        <div class="settings-row settings-slider-row">
+          <label for="setting-master-vol">Master Volume</label>
+          <input type="range" id="setting-master-vol" min="0" max="100" value="100">
+          <span class="settings-slider-val" id="setting-master-vol-val">100</span>
+        </div>
+        <div class="settings-row settings-slider-row">
+          <label for="setting-sfx-vol">SFX Volume</label>
+          <input type="range" id="setting-sfx-vol" min="0" max="100" value="100">
+          <span class="settings-slider-val" id="setting-sfx-vol-val">100</span>
+        </div>
+        <div class="settings-row settings-slider-row">
+          <label for="setting-music-vol">Music Volume</label>
+          <input type="range" id="setting-music-vol" min="0" max="100" value="100">
+          <span class="settings-slider-val" id="setting-music-vol-val">100</span>
+        </div>
       </div>
-      <div class="help-section">
-        <h3>Step by Step</h3>
-        <ol>
-          <li><strong>Describe</strong> — The Executor describes what they see (bomb shape, size, colors, modules).</li>
-          <li><strong>Identify</strong> — The Instructor looks up the bomb type in the Index tab.</li>
-          <li><strong>Instruct</strong> — The Instructor reads the manual and gives step-by-step defusal instructions.</li>
-          <li><strong>Execute</strong> — The Executor follows the instructions carefully. Click components to interact.</li>
-        </ol>
+
+      <div class="settings-section">
+        <h3>Visual</h3>
+        <div class="settings-row">
+          <label>Screen Shake</label>
+          <label class="toggle-switch"><input type="checkbox" id="setting-screen-shake" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <label>Reduced Motion</label>
+          <label class="toggle-switch"><input type="checkbox" id="setting-reduced-motion"><span class="toggle-slider"></span></label>
+        </div>
       </div>
-      <div class="help-section">
-        <h3>Tips</h3>
-        <ul>
-          <li>Hover over bomb components to see labels — use these to describe clearly.</li>
-          <li>A confirmation popup appears before each action — take a moment to verify.</li>
-          <li>Wrong actions cause strikes. Too many strikes = explosion!</li>
-          <li>Watch the timer — it changes color as time runs low.</li>
-        </ul>
+
+      <div class="settings-section">
+        <h3>Accessibility</h3>
+        <div class="settings-row">
+          <label>Colorblind Mode</label>
+          <label class="toggle-switch"><input type="checkbox" id="setting-colorblind"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Chat</h3>
+        <div class="settings-row">
+          <label>Font Size</label>
+          <div class="settings-radio-group">
+            <label class="settings-radio"><input type="radio" name="setting-chat-size" value="small"> Small</label>
+            <label class="settings-radio"><input type="radio" name="setting-chat-size" value="medium" checked> Medium</label>
+            <label class="settings-radio"><input type="radio" name="setting-chat-size" value="large"> Large</label>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label>Show Timestamps</label>
+          <label class="toggle-switch"><input type="checkbox" id="setting-show-timestamps" checked><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Gameplay</h3>
+        <div class="settings-row">
+          <label>Action Confirmations</label>
+          <label class="toggle-switch"><input type="checkbox" id="setting-action-confirmations" checked><span class="toggle-slider"></span></label>
+        </div>
       </div>
     </div>
   </div>
@@ -226,7 +469,11 @@
       <div class="lobby-footer">
         <button id="btn-ready" class="btn btn-primary btn-large" disabled>Ready</button>
         <p id="lobby-status" class="status-text">Waiting for partner...</p>
-        <button id="btn-leave-lobby" class="btn btn-link" style="margin-top:12px;color:var(--accent-red);">Leave Room</button>
+        <div class="lobby-footer-links">
+          <button id="btn-help-lobby" class="btn btn-link">How to Play</button>
+          <span class="lobby-link-sep"></span>
+          <button id="btn-leave-lobby" class="btn btn-link" style="color:var(--accent-red);">Leave Room</button>
+        </div>
       </div>
     </div>
   </div>
@@ -277,6 +524,9 @@
         <div class="topbar-right">
           <div id="game-strikes" class="strikes-display"></div>
           <button id="btn-help-ingame" class="btn btn-tiny" aria-label="Help">?</button>
+          <button id="btn-settings-ingame" class="btn-settings-sm" title="Settings" aria-label="Settings">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M10 13a3 3 0 100-6 3 3 0 000 6zm7.93-2.49a1.06 1.06 0 00-.79-.61l-.56-.09a6.93 6.93 0 00-.4-.96l.33-.46a1.06 1.06 0 00-.09-1.34l-1.47-1.47a1.06 1.06 0 00-1.34-.09l-.46.33a6.93 6.93 0 00-.96-.4l-.09-.56a1.06 1.06 0 00-1.05-.86h-2.1a1.06 1.06 0 00-1.05.86l-.09.56c-.33.11-.65.24-.96.4l-.46-.33a1.06 1.06 0 00-1.34.09L3.58 7.05a1.06 1.06 0 00-.09 1.34l.33.46c-.16.31-.29.63-.4.96l-.56.09a1.06 1.06 0 00-.86 1.05v2.1c0 .5.35.93.86 1.05l.56.09c.11.33.24.65.4.96l-.33.46a1.06 1.06 0 00.09 1.34l1.47 1.47a1.06 1.06 0 001.34.09l.46-.33c.31.16.63.29.96.4l.09.56a1.06 1.06 0 001.05.86h2.1a1.06 1.06 0 001.05-.86l.09-.56c.33-.11.65-.24.96-.4l.46.33a1.06 1.06 0 001.34-.09l1.47-1.47a1.06 1.06 0 00.09-1.34l-.33-.46c.16-.31.29-.63.4-.96l.56-.09a1.06 1.06 0 00.86-1.05v-2.1c0-.5-.35-.93-.86-1.05z"/></svg>
+          </button>
           <button id="btn-fullscreen-game" class="btn-fullscreen-sm" title="Toggle fullscreen" aria-label="Toggle fullscreen">
             <svg class="fs-icon fs-expand" viewBox="0 0 20 20" width="16" height="16"><path d="M3 3h5v2H5v3H3V3zm9 0h5v5h-2V5h-3V3zM3 12h2v3h3v2H3v-5zm12 3h-3v2h5v-5h-2v3z" fill="currentColor"/></svg>
             <svg class="fs-icon fs-compress hidden" viewBox="0 0 20 20" width="16" height="16"><path d="M5 8H3V3h5v2H5v3zm10-3h-3V3h5v5h-2V5zM5 12v3h3v2H3v-5h2zm10 3v-3h2v5h-5v-2h3z" fill="currentColor"/></svg>

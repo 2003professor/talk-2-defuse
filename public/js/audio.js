@@ -3,22 +3,52 @@
 
 const AudioFX = (() => {
   let ctx;
+  let masterGain, sfxGain, musicGain;
+  let _masterVol = 1, _sfxVol = 1, _musicVol = 1;
+
   function getCtx() {
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
     return ctx;
+  }
+
+  function ensureGainNodes() {
+    if (masterGain) return;
+    const c = getCtx();
+    masterGain = c.createGain();
+    masterGain.gain.value = _masterVol;
+    masterGain.connect(c.destination);
+
+    sfxGain = c.createGain();
+    sfxGain.gain.value = _sfxVol;
+    sfxGain.connect(masterGain);
+
+    musicGain = c.createGain();
+    musicGain.gain.value = _musicVol;
+    musicGain.connect(masterGain);
+  }
+
+  function getSfxDest() {
+    ensureGainNodes();
+    return sfxGain;
+  }
+
+  function getMusicDest() {
+    ensureGainNodes();
+    return musicGain;
   }
 
   function play(fn) {
     try {
       const c = getCtx();
       if (c.state === 'suspended') c.resume();
-      fn(c);
+      const dest = getSfxDest();
+      fn(c, dest);
     } catch (_) { /* audio not available */ }
   }
 
   return {
     snip() {
-      play(c => {
+      play((c, dest) => {
         const o = c.createOscillator();
         const g = c.createGain();
         o.type = 'square';
@@ -26,13 +56,13 @@ const AudioFX = (() => {
         o.frequency.exponentialRampToValueAtTime(200, c.currentTime + 0.1);
         g.gain.setValueAtTime(0.3, c.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.15);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start(); o.stop(c.currentTime + 0.15);
       });
     },
 
     success() {
-      play(c => {
+      play((c, dest) => {
         [523, 659, 784].forEach((freq, i) => {
           const o = c.createOscillator();
           const g = c.createGain();
@@ -40,7 +70,7 @@ const AudioFX = (() => {
           o.frequency.value = freq;
           g.gain.setValueAtTime(0.25, c.currentTime + i * 0.15);
           g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + i * 0.15 + 0.4);
-          o.connect(g).connect(c.destination);
+          o.connect(g).connect(dest);
           o.start(c.currentTime + i * 0.15);
           o.stop(c.currentTime + i * 0.15 + 0.4);
         });
@@ -48,7 +78,7 @@ const AudioFX = (() => {
     },
 
     strike() {
-      play(c => {
+      play((c, dest) => {
         const o = c.createOscillator();
         const g = c.createGain();
         o.type = 'sawtooth';
@@ -56,13 +86,13 @@ const AudioFX = (() => {
         o.frequency.exponentialRampToValueAtTime(50, c.currentTime + 0.4);
         g.gain.setValueAtTime(0.4, c.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.4);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start(); o.stop(c.currentTime + 0.4);
       });
     },
 
     explosion() {
-      play(c => {
+      play((c, dest) => {
         const t = c.currentTime;
         // Layer 1: Sub-bass boom punch (the "BOOM" you feel)
         const sub = c.createOscillator();
@@ -72,7 +102,7 @@ const AudioFX = (() => {
         sub.frequency.exponentialRampToValueAtTime(20, t + 1.0);
         subG.gain.setValueAtTime(0.7, t);
         subG.gain.exponentialRampToValueAtTime(0.01, t + 1.0);
-        sub.connect(subG).connect(c.destination);
+        sub.connect(subG).connect(dest);
         sub.start(t); sub.stop(t + 1.0);
 
         // Layer 2: Mid punch (adds body)
@@ -83,7 +113,7 @@ const AudioFX = (() => {
         mid.frequency.exponentialRampToValueAtTime(30, t + 0.5);
         midG.gain.setValueAtTime(0.35, t);
         midG.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-        mid.connect(midG).connect(c.destination);
+        mid.connect(midG).connect(dest);
         mid.start(t); mid.stop(t + 0.5);
 
         // Layer 3: Noise burst (the crack/debris)
@@ -104,7 +134,7 @@ const AudioFX = (() => {
         lpf.type = 'lowpass';
         lpf.frequency.setValueAtTime(800, t);
         lpf.frequency.exponentialRampToValueAtTime(150, t + 2.0);
-        src.connect(lpf).connect(noiseG).connect(c.destination);
+        src.connect(lpf).connect(noiseG).connect(dest);
         src.start(t);
 
         // Layer 4: High crack (initial impact snap)
@@ -121,13 +151,13 @@ const AudioFX = (() => {
         const hpf = c.createBiquadFilter();
         hpf.type = 'highpass';
         hpf.frequency.value = 2000;
-        crack.connect(hpf).connect(crackG).connect(c.destination);
+        crack.connect(hpf).connect(crackG).connect(dest);
         crack.start(t);
       });
     },
 
     defused() {
-      play(c => {
+      play((c, dest) => {
         const notes = [523, 659, 784, 1047];
         notes.forEach((freq, i) => {
           const o = c.createOscillator();
@@ -136,7 +166,7 @@ const AudioFX = (() => {
           o.frequency.value = freq;
           g.gain.setValueAtTime(0.2, c.currentTime + i * 0.2);
           g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + i * 0.2 + 0.5);
-          o.connect(g).connect(c.destination);
+          o.connect(g).connect(dest);
           o.start(c.currentTime + i * 0.2);
           o.stop(c.currentTime + i * 0.2 + 0.5);
         });
@@ -144,21 +174,21 @@ const AudioFX = (() => {
     },
 
     click() {
-      play(c => {
+      play((c, dest) => {
         const o = c.createOscillator();
         const g = c.createGain();
         o.type = 'sine';
         o.frequency.value = 600;
         g.gain.setValueAtTime(0.15, c.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.05);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start(); o.stop(c.currentTime + 0.05);
       });
     },
 
     // Fuse sizzle — short "tsssss" sound (filtered noise + high sine crackle)
     fuseLit() {
-      play(c => {
+      play((c, dest) => {
         const dur = 0.8;
         const t = c.currentTime;
         // White noise buffer for sizzle
@@ -180,7 +210,7 @@ const AudioFX = (() => {
         g.gain.linearRampToValueAtTime(0.25, t + 0.03);
         g.gain.setValueAtTime(0.25, t + 0.1);
         g.gain.exponentialRampToValueAtTime(0.01, t + dur);
-        noise.connect(bp).connect(g).connect(c.destination);
+        noise.connect(bp).connect(g).connect(dest);
         noise.start(t);
         noise.stop(t + dur);
         // High sine crackle on top
@@ -191,7 +221,7 @@ const AudioFX = (() => {
         o.frequency.exponentialRampToValueAtTime(3000, t + dur);
         g2.gain.setValueAtTime(0.04, t);
         g2.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        o.connect(g2).connect(c.destination);
+        o.connect(g2).connect(dest);
         o.start(t);
         o.stop(t + dur);
       });
@@ -199,7 +229,7 @@ const AudioFX = (() => {
 
     // Clock tick — thin sharp "tet" like a clock mechanism. Scales with speed.
     tick(speed = 1) {
-      play(c => {
+      play((c, dest) => {
         const t = c.currentTime;
         const freq = 2400 + (speed - 1) * 400;
         const vol = 0.15 + (speed - 1) * 0.10;
@@ -211,7 +241,7 @@ const AudioFX = (() => {
         o.frequency.value = freq;
         g.gain.setValueAtTime(Math.min(vol, 0.4), t);
         g.gain.setValueAtTime(0.001, t + 0.018);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start(t); o.stop(t + 0.02);
 
         // Secondary double-tap when sped up
@@ -223,7 +253,7 @@ const AudioFX = (() => {
           const vol2 = Math.min(vol * 0.5, 0.2);
           g2.gain.setValueAtTime(vol2, t + 0.06);
           g2.gain.setValueAtTime(0.001, t + 0.078);
-          o2.connect(g2).connect(c.destination);
+          o2.connect(g2).connect(dest);
           o2.start(t + 0.06); o2.stop(t + 0.08);
         }
 
@@ -235,7 +265,7 @@ const AudioFX = (() => {
           o3.frequency.value = 60;
           g3.gain.setValueAtTime(0.05, t);
           g3.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-          o3.connect(g3).connect(c.destination);
+          o3.connect(g3).connect(dest);
           o3.start(t); o3.stop(t + 0.13);
         }
       });
@@ -243,7 +273,7 @@ const AudioFX = (() => {
 
     // Alarm sound when timer speed increases after a strike
     timerSpeedup(speed) {
-      play(c => {
+      play((c, dest) => {
         // Rising alarm sweep
         const o = c.createOscillator();
         const g = c.createGain();
@@ -252,7 +282,7 @@ const AudioFX = (() => {
         o.frequency.exponentialRampToValueAtTime(800 * speed, c.currentTime + 0.5);
         g.gain.setValueAtTime(0.2, c.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.6);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start();
         o.stop(c.currentTime + 0.6);
 
@@ -265,7 +295,7 @@ const AudioFX = (() => {
           const t = c.currentTime + 0.6 + i * 0.15;
           gb.gain.setValueAtTime(0.15, t);
           gb.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
-          ob.connect(gb).connect(c.destination);
+          ob.connect(gb).connect(dest);
           ob.start(t);
           ob.stop(t + 0.1);
         }
@@ -273,7 +303,7 @@ const AudioFX = (() => {
     },
 
     buttonPress() {
-      play(c => {
+      play((c, dest) => {
         const o = c.createOscillator();
         const g = c.createGain();
         o.type = 'triangle';
@@ -281,40 +311,40 @@ const AudioFX = (() => {
         o.frequency.exponentialRampToValueAtTime(150, c.currentTime + 0.2);
         g.gain.setValueAtTime(0.3, c.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.2);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start(); o.stop(c.currentTime + 0.2);
       });
     },
 
     keypadBeep() {
-      play(c => {
+      play((c, dest) => {
         const o = c.createOscillator();
         const g = c.createGain();
         o.type = 'square';
         o.frequency.value = 440 + Math.random() * 200;
         g.gain.setValueAtTime(0.12, c.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.1);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start(); o.stop(c.currentTime + 0.1);
       });
     },
 
     message() {
-      play(c => {
+      play((c, dest) => {
         const o = c.createOscillator();
         const g = c.createGain();
         o.type = 'sine';
         o.frequency.value = 880;
         g.gain.setValueAtTime(0.1, c.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.08);
-        o.connect(g).connect(c.destination);
+        o.connect(g).connect(dest);
         o.start(); o.stop(c.currentTime + 0.08);
       });
     },
 
     // Countdown tick: dramatic multi-layered impact — 3=red, 2=orange, 1=yellow
     countdownTick(n) {
-      play(c => {
+      play((c, dest) => {
         const t = c.currentTime;
         const freqs = { 3: 220, 2: 261, 1: 329 };  // rising tension
         const freq = freqs[n] || 261;
@@ -327,7 +357,7 @@ const AudioFX = (() => {
         o1.frequency.exponentialRampToValueAtTime(freq * 0.85, t + 0.5);
         g1.gain.setValueAtTime(0.4, t);
         g1.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-        o1.connect(g1).connect(c.destination);
+        o1.connect(g1).connect(dest);
         o1.start(t); o1.stop(t + 0.55);
 
         // Layer 2: sub-bass thump
@@ -338,7 +368,7 @@ const AudioFX = (() => {
         o2.frequency.exponentialRampToValueAtTime(40, t + 0.25);
         g2.gain.setValueAtTime(0.5, t);
         g2.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
-        o2.connect(g2).connect(c.destination);
+        o2.connect(g2).connect(dest);
         o2.start(t); o2.stop(t + 0.3);
 
         // Layer 3: noise transient (impact)
@@ -352,7 +382,7 @@ const AudioFX = (() => {
         ng.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
         const nf = c.createBiquadFilter();
         nf.type = 'highpass'; nf.frequency.value = 800;
-        noise.connect(nf).connect(ng).connect(c.destination);
+        noise.connect(nf).connect(ng).connect(dest);
         noise.start(t); noise.stop(t + 0.1);
 
         // Layer 4: high harmonic ping (octave up)
@@ -362,7 +392,7 @@ const AudioFX = (() => {
         o3.frequency.value = freq * 2;
         g3.gain.setValueAtTime(0.12, t);
         g3.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
-        o3.connect(g3).connect(c.destination);
+        o3.connect(g3).connect(dest);
         o3.start(t); o3.stop(t + 0.4);
 
         // Rising tension tail (only on "1")
@@ -377,7 +407,7 @@ const AudioFX = (() => {
           gRise.gain.exponentialRampToValueAtTime(0.01, t + 0.9);
           const fRise = c.createBiquadFilter();
           fRise.type = 'lowpass'; fRise.frequency.value = 2000;
-          oRise.connect(fRise).connect(gRise).connect(c.destination);
+          oRise.connect(fRise).connect(gRise).connect(dest);
           oRise.start(t + 0.2); oRise.stop(t + 0.95);
         }
       });
@@ -385,7 +415,7 @@ const AudioFX = (() => {
 
     // Countdown GO: epic slam with siren burst and chord
     countdownGo() {
-      play(c => {
+      play((c, dest) => {
         const t = c.currentTime;
 
         // Layer 1: power chord (C4+E4+G4+C5)
@@ -397,7 +427,7 @@ const AudioFX = (() => {
           g.gain.setValueAtTime(0.2, t);
           g.gain.setValueAtTime(0.2, t + 0.3);
           g.gain.exponentialRampToValueAtTime(0.01, t + 0.8);
-          o.connect(g).connect(c.destination);
+          o.connect(g).connect(dest);
           o.start(t); o.stop(t + 0.85);
         });
 
@@ -409,7 +439,7 @@ const AudioFX = (() => {
         oSub.frequency.exponentialRampToValueAtTime(30, t + 0.4);
         gSub.gain.setValueAtTime(0.6, t);
         gSub.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-        oSub.connect(gSub).connect(c.destination);
+        oSub.connect(gSub).connect(dest);
         oSub.start(t); oSub.stop(t + 0.45);
 
         // Layer 3: noise burst (crash)
@@ -423,7 +453,7 @@ const AudioFX = (() => {
         ng.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
         const nf = c.createBiquadFilter();
         nf.type = 'bandpass'; nf.frequency.value = 3000; nf.Q.value = 0.5;
-        noise.connect(nf).connect(ng).connect(c.destination);
+        noise.connect(nf).connect(ng).connect(dest);
         noise.start(t); noise.stop(t + 0.25);
 
         // Layer 4: rising siren sweep
@@ -437,7 +467,7 @@ const AudioFX = (() => {
         gSiren.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
         const sf = c.createBiquadFilter();
         sf.type = 'lowpass'; sf.frequency.value = 2500;
-        oSiren.connect(sf).connect(gSiren).connect(c.destination);
+        oSiren.connect(sf).connect(gSiren).connect(dest);
         oSiren.start(t); oSiren.stop(t + 0.55);
       });
     },
@@ -455,12 +485,13 @@ const AudioFX = (() => {
         this.isMenuPlaying = true;
         const nodes = [];
         const timers = [];
+        const musicDest = getMusicDest();
 
         // Master gain for fade-out
         const master = c.createGain();
         master.gain.setValueAtTime(0, c.currentTime);
         master.gain.linearRampToValueAtTime(1, c.currentTime + 2);
-        master.connect(c.destination);
+        master.connect(musicDest);
         nodes.push(master);
 
         // ── Layer 1: Dark pad (minor chord drone) ──
@@ -605,6 +636,30 @@ const AudioFX = (() => {
           this._menuNodes = [];
           this._menuMaster = null;
         }
+      }
+    },
+
+    // ── Volume Control ──────────────────────────────────────────
+    setMasterVolume(v) {
+      _masterVol = v;
+      if (masterGain) masterGain.gain.value = v;
+    },
+
+    setSfxVolume(v) {
+      _sfxVol = v;
+      if (sfxGain) sfxGain.gain.value = v;
+    },
+
+    setMusicVolume(v) {
+      _musicVol = v;
+      if (musicGain) musicGain.gain.value = v;
+      // Also update the menu music's own master gain if currently playing
+      if (this._menuMaster && this.isMenuPlaying) {
+        try {
+          const c = getCtx();
+          this._menuMaster.gain.setValueAtTime(this._menuMaster.gain.value, c.currentTime);
+          this._menuMaster.gain.linearRampToValueAtTime(v > 0 ? 1 : 0, c.currentTime + 0.1);
+        } catch (_) {}
       }
     },
   };

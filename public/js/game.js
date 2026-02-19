@@ -519,8 +519,8 @@ socket.on('game-start', (data) => {
 });
 
 // ══════════════════════ EXECUTOR VIEW ══════════════════════
-const SCREW_SVG = `<svg viewBox="0 0 10 10" width="10" height="10"><defs><radialGradient id="sg" cx="40%" cy="35%"><stop offset="0%" stop-color="#777"/><stop offset="100%" stop-color="#333"/></radialGradient></defs><circle cx="5" cy="5" r="4.5" fill="url(#sg)" stroke="#222" stroke-width="0.5"/><line x1="2" y1="5" x2="8" y2="5" stroke="#222" stroke-width="0.7"/><line x1="5" y1="2" x2="5" y2="8" stroke="#222" stroke-width="0.7"/></svg>`;
-const RIVET_SVG = `<svg viewBox="0 0 10 10" width="10" height="10"><defs><radialGradient id="rg" cx="35%" cy="30%"><stop offset="0%" stop-color="#888"/><stop offset="100%" stop-color="#444"/></radialGradient></defs><circle cx="5" cy="5" r="4" fill="url(#rg)" stroke="#333" stroke-width="0.5"/></svg>`;
+const SCREW_SVG = `<svg viewBox="0 0 12 12" width="12" height="12"><defs><radialGradient id="sg" cx="38%" cy="32%"><stop offset="0%" stop-color="#999"/><stop offset="40%" stop-color="#666"/><stop offset="100%" stop-color="#2a2a2a"/></radialGradient></defs><circle cx="6" cy="6" r="5" fill="url(#sg)" stroke="#1a1a1a" stroke-width="0.8"/><circle cx="6" cy="6" r="5" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.3"/><line x1="2.5" y1="6" x2="9.5" y2="6" stroke="#1a1a1a" stroke-width="0.8"/><line x1="6" y1="2.5" x2="6" y2="9.5" stroke="#1a1a1a" stroke-width="0.8"/></svg>`;
+const RIVET_SVG = `<svg viewBox="0 0 12 12" width="12" height="12"><defs><radialGradient id="rg" cx="35%" cy="28%"><stop offset="0%" stop-color="#aaa"/><stop offset="30%" stop-color="#777"/><stop offset="100%" stop-color="#3a3a3a"/></radialGradient></defs><circle cx="6" cy="6" r="4.5" fill="url(#rg)" stroke="#222" stroke-width="0.6"/><circle cx="4.5" cy="4.2" r="1.5" fill="rgba(255,255,255,0.12)"/></svg>`;
 
 function renderExecutorView() {
   const content = document.getElementById('game-content');
@@ -534,38 +534,72 @@ function renderExecutorView() {
   const textureClass = bombState.casingTexture ? `bomb-texture-${bombState.casingTexture}` : '';
   const stripeClass = bombState.casingTheme ? `bomb-stripe-${bombState.casingTheme}` : '';
   const modCount = bombState.modules.length;
-  const rivets = Array(6).fill(RIVET_SVG).join('');
+  const rivets = Array(8).fill(RIVET_SVG).join('');
 
   let html = '<div class="bomb-container">';
   html += `<div class="bomb-casing ${shapeClass} ${themeClass} ${textureClass}">`;
 
   // Shape-specific decoration
   const shapeDecorations = {
-    round: `<div class="bomb-deco-round"><svg viewBox="0 0 200 50" width="100%" height="50" preserveAspectRatio="none">
-      <defs><radialGradient id="domeG" cx="50%" cy="100%"><stop offset="0%" stop-color="rgba(255,255,255,0.08)"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
-      <ellipse cx="100" cy="50" rx="100" ry="42" fill="url(#domeG)"/>
-      <rect x="92" y="22" width="16" height="18" rx="3" fill="#2a2d31" stroke="#4a4d52" stroke-width="1.5"/>
-      <line x1="100" y1="22" x2="100" y2="8" stroke="#c9a227" stroke-width="2.5" stroke-linecap="round"/>
-      <path d="M100 8 C104 2 112 4 108 -2" stroke="#c9a227" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <circle cx="108" cy="-2" r="4" fill="#f0883e" opacity="0.9"/>
-      <circle cx="108" cy="-2" r="6" fill="none" stroke="rgba(240,136,62,0.4)" stroke-width="2"><animate attributeName="r" from="6" to="16" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite"/></circle>
-      <circle cx="108" cy="-2" r="3" fill="none" stroke="rgba(255,200,60,0.5)" stroke-width="1.5"><animate attributeName="r" from="3" to="10" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.8" to="0" dur="1s" repeatCount="indefinite"/></circle>
+    round: `<div class="bomb-deco-round"><svg viewBox="0 0 200 60" width="100%" height="60" preserveAspectRatio="none">
+      <defs>
+        <radialGradient id="domeG" cx="50%" cy="100%"><stop offset="0%" stop-color="rgba(255,255,255,0.1)"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+        <radialGradient id="fuseGlow" cx="50%" cy="50%"><stop offset="0%" stop-color="#ffe066" stop-opacity="0.8"/><stop offset="50%" stop-color="#f0883e" stop-opacity="0.4"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+      </defs>
+      <ellipse cx="100" cy="58" rx="100" ry="44" fill="url(#domeG)"/>
+      <rect x="88" y="28" width="24" height="22" rx="4" fill="#2a2d31" stroke="#5a5d62" stroke-width="2"/>
+      <rect x="93" y="32" width="14" height="14" rx="2" fill="#1a1c20" stroke="#3a3d42" stroke-width="1"/>
+      <line x1="100" y1="28" x2="100" y2="10" stroke="#c9a227" stroke-width="3" stroke-linecap="round"/>
+      <line x1="100" y1="28" x2="100" y2="10" stroke="#8a7020" stroke-width="1" stroke-dasharray="2 3"/>
+      <path d="M100 10 C105 2 114 5 110 -4" stroke="#c9a227" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="110" cy="-4" r="8" fill="url(#fuseGlow)"/>
+      <circle cx="110" cy="-4" r="4" fill="#ffc040" opacity="0.9"/>
+      <circle cx="110" cy="-4" r="2" fill="#fff8e0" opacity="0.7"/>
+      <circle cx="110" cy="-4" r="8" fill="none" stroke="rgba(255,180,40,0.5)" stroke-width="2"><animate attributeName="r" from="8" to="20" dur="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.6" to="0" dur="1.2s" repeatCount="indefinite"/></circle>
+      <circle cx="110" cy="-4" r="4" fill="none" stroke="rgba(255,220,80,0.6)" stroke-width="1.5"><animate attributeName="r" from="4" to="12" dur="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.8" to="0" dur="0.8s" repeatCount="indefinite"/></circle>
     </svg></div>`,
     square: `<div class="bomb-deco-square">
       <span class="bomb-deco-square-corner tl"></span><span class="bomb-deco-square-corner tr"></span>
       <span class="bomb-deco-square-corner bl"></span><span class="bomb-deco-square-corner br"></span>
     </div>`,
-    cylindrical: `<div class="bomb-deco-cylindrical"></div>`,
-    briefcase: `<div class="bomb-deco-briefcase"><svg viewBox="0 0 200 36" width="100%" height="36" preserveAspectRatio="xMidYMax meet">
-      <rect x="65" y="2" width="70" height="10" rx="5" fill="none" stroke="#5a5d62" stroke-width="2.5"/>
-      <rect x="80" y="12" width="8" height="8" rx="2" fill="#3a3d42" stroke="#6a6d72" stroke-width="1.5"/>
-      <rect x="112" y="12" width="8" height="8" rx="2" fill="#3a3d42" stroke="#6a6d72" stroke-width="1.5"/>
-      <circle cx="84" cy="16" r="1.5" fill="#888"/>
-      <circle cx="116" cy="16" r="1.5" fill="#888"/>
-      <line x1="84" y1="20" x2="84" y2="30" stroke="#4a4d52" stroke-width="1.5"/>
-      <line x1="116" y1="20" x2="116" y2="30" stroke="#4a4d52" stroke-width="1.5"/>
+    cylindrical: `<div class="bomb-deco-cylindrical"><svg viewBox="0 0 300 24" width="100%" height="24" preserveAspectRatio="none">
+      <defs><linearGradient id="capG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,255,255,0.1)"/><stop offset="50%" stop-color="rgba(255,255,255,0.02)"/><stop offset="100%" stop-color="rgba(255,255,255,0.08)"/></linearGradient></defs>
+      <rect x="0" y="0" width="300" height="24" fill="url(#capG)"/>
+      <line x1="0" y1="4" x2="300" y2="4" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+      <line x1="0" y1="12" x2="300" y2="12" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+      <line x1="0" y1="20" x2="300" y2="20" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+      <circle cx="30" cy="12" r="5" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+      <circle cx="30" cy="12" r="2" fill="rgba(255,255,255,0.06)"/>
+      <circle cx="270" cy="12" r="5" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+      <circle cx="270" cy="12" r="2" fill="rgba(255,255,255,0.06)"/>
+      <rect x="140" y="7" width="20" height="10" rx="2" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
     </svg></div>`,
-    barrel: `<div class="bomb-deco-barrel"></div>`,
+    briefcase: `<div class="bomb-deco-briefcase"><svg viewBox="0 0 200 42" width="100%" height="42" preserveAspectRatio="xMidYMax meet">
+      <defs><linearGradient id="handleG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6a6d72"/><stop offset="50%" stop-color="#4a4d52"/><stop offset="100%" stop-color="#3a3d42"/></linearGradient></defs>
+      <rect x="60" y="2" width="80" height="12" rx="6" fill="none" stroke="url(#handleG)" stroke-width="3"/>
+      <rect x="60" y="8" width="4" height="14" rx="1" fill="#3a3d42" stroke="#5a5d62" stroke-width="1"/>
+      <rect x="136" y="8" width="4" height="14" rx="1" fill="#3a3d42" stroke="#5a5d62" stroke-width="1"/>
+      <rect x="72" y="22" width="14" height="12" rx="2" fill="#2a2d31" stroke="#6a6d72" stroke-width="1.5"/>
+      <circle cx="79" cy="28" r="2.5" fill="#555" stroke="#777" stroke-width="0.5"/>
+      <line x1="79" y1="26" x2="79" y2="30" stroke="#888" stroke-width="0.7"/>
+      <rect x="114" y="22" width="14" height="12" rx="2" fill="#2a2d31" stroke="#6a6d72" stroke-width="1.5"/>
+      <circle cx="121" cy="28" r="2.5" fill="#555" stroke="#777" stroke-width="0.5"/>
+      <line x1="121" y1="26" x2="121" y2="30" stroke="#888" stroke-width="0.7"/>
+      <line x1="62" y1="35" x2="62" y2="42" stroke="#4a4d52" stroke-width="1.5"/>
+      <line x1="138" y1="35" x2="138" y2="42" stroke="#4a4d52" stroke-width="1.5"/>
+    </svg></div>`,
+    barrel: `<div class="bomb-deco-barrel"><svg viewBox="0 0 300 22" width="100%" height="22" preserveAspectRatio="none">
+      <defs><linearGradient id="bandG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,255,255,0.1)"/><stop offset="40%" stop-color="rgba(255,255,255,0.03)"/><stop offset="100%" stop-color="rgba(255,255,255,0.08)"/></linearGradient></defs>
+      <rect x="0" y="0" width="300" height="22" fill="url(#bandG)"/>
+      <line x1="0" y1="3" x2="300" y2="3" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+      <line x1="0" y1="19" x2="300" y2="19" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+      <circle cx="40" cy="11" r="4" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+      <circle cx="40" cy="11" r="1.5" fill="rgba(255,255,255,0.06)"/>
+      <circle cx="150" cy="11" r="6" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+      <circle cx="150" cy="11" r="3" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+      <circle cx="260" cy="11" r="4" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+      <circle cx="260" cy="11" r="1.5" fill="rgba(255,255,255,0.06)"/>
+    </svg></div>`,
   };
   html += shapeDecorations[bombState.shape] || '';
 
@@ -665,10 +699,10 @@ function renderModule(mod, mi) {
       const iconMap = { triangle: '\u25B3', circle: '\u25CB', star: '\u2605', lightning: '\u26A1' };
       const icon = iconMap[mod.icon] || mod.icon;
       html += '<div class="bomb-button-container">';
-      html += '<div class="bomb-button-bezel">';
+      html += '<div class="bomb-button-mount"><div class="bomb-button-bezel">';
       html += `<div class="bomb-button-cap bomb-button-cap-${mod.color}${mod.solved ? ' solved-btn' : ''}" data-module="${mi}" tabindex="0" role="button" aria-label="${mod.color} button labeled ${mod.label}">`;
       html += `<span class="btn-icon">${icon}</span><span class="btn-label">${mod.label}</span>`;
-      html += '</div></div>';
+      html += '</div></div></div>';
       html += `<div class="bomb-button-info">Color: ${cap(mod.color)} &middot; Label: ${mod.label} &middot; Icon: ${mod.icon}</div>`;
       if (isHoldingButton && buttonHoldModule === mi) {
         html += `<div class="holding-indicator">HOLDING... ${stripColor ? `Strip color: <strong style="color:${stripColor}">${cap(stripColor)}</strong> — release at the right time!` : 'waiting for strip...'}</div>`;
@@ -696,7 +730,10 @@ function renderModule(mod, mi) {
     }
     case 'morse': {
       html += '<div class="morse-container">';
+      html += '<div class="morse-lamp-assembly">';
       html += `<div class="morse-bulb-housing"><div class="morse-light" id="morse-light-${mi}"></div></div>`;
+      html += '<div class="morse-lamp-label">Signal Lamp</div>';
+      html += '</div>';
       html += '<div class="morse-info">Watch the flashing light. Describe the pattern to your partner.</div>';
       html += '<div class="morse-freq-input">';
       html += `<label>Frequency (MHz):</label>`;

@@ -1039,13 +1039,7 @@ input[type="text"].input-error {
   );
   pointer-events: none; z-index: 0;
 }
-/* Specular highlight across top of casing */
-.bomb-casing::after {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
-  pointer-events: none; z-index: 0;
-}
+/* Specular highlight removed — caused visible edge line */
 /* Shape: Round — bulbous, classic bomb */
 .bomb-shape-round { border-radius: 32px; max-width: 560px; margin: 0 auto; }
 /* Shape: Square — military crate, sharp edges */
@@ -2768,13 +2762,7 @@ input[type="text"].input-error {
 /* Square — reinforced corner brackets + edge plating */
 .bomb-shape-square .bomb-casing-edge.top { height: 20px; }
 .bomb-shape-square .bomb-casing-edge.bottom { height: 20px; }
-.bomb-shape-square::after {
-  content: '';
-  position: absolute; inset: 8px; z-index: 1;
-  border: 2px solid rgba(255,255,255,0.06);
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.15);
-  pointer-events: none;
-}
+/* Square inner border removed — overlaid content */
 .bomb-deco-square {
   position: absolute; inset: 0; z-index: 2; pointer-events: none;
 }

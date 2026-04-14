@@ -64,7 +64,11 @@
             </div>
           </div>
           <p id="landing-error" class="error-msg hidden"></p>
-          <div class="how-to-play-landing">
+          <div class="landing-extra-buttons">
+            <button id="btn-tutorial" class="btn btn-link">Tutorial</button>
+            <span class="landing-btn-sep">&middot;</span>
+            <button id="btn-solo" class="btn btn-link">Solo Practice</button>
+            <span class="landing-btn-sep">&middot;</span>
             <button id="btn-how-to-play" class="btn btn-link">How to Play</button>
           </div>
         </div>
@@ -264,6 +268,56 @@
           <strong>Morse Code</strong>
           <span>Decode the signal</span>
         </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="6" y="4" width="20" height="12" rx="2" stroke="#3fb950" stroke-width="1.5" fill="rgba(63,185,80,0.1)"/>
+            <text x="16" y="13" text-anchor="middle" font-size="8" fill="#3fb950" font-weight="bold">3</text>
+            <rect x="3" y="20" width="6" height="8" rx="1" stroke="#3fb950" stroke-width="1.5" fill="rgba(63,185,80,0.15)"/>
+            <rect x="12" y="20" width="6" height="8" rx="1" stroke="#3fb950" stroke-width="1.5" fill="rgba(63,185,80,0.15)"/>
+            <rect x="21" y="20" width="6" height="8" rx="1" stroke="#3fb950" stroke-width="1.5" fill="rgba(63,185,80,0.15)"/>
+          </svg>
+          <strong>Memory</strong>
+          <span>Recall past stages</span>
+        </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="2" y="2" width="28" height="28" stroke="#bc8cff" stroke-width="1.5"/>
+            <line x1="2" y1="11" x2="16" y2="11" stroke="#bc8cff" stroke-width="1.5"/>
+            <line x1="20" y1="2" x2="20" y2="20" stroke="#bc8cff" stroke-width="1.5"/>
+            <line x1="11" y1="20" x2="30" y2="20" stroke="#bc8cff" stroke-width="1.5"/>
+            <circle cx="8" cy="24" r="3" fill="#bc8cff" opacity="0.6"/>
+            <circle cx="26" cy="8" r="2" fill="rgba(220,53,69,0.6)"/>
+          </svg>
+          <strong>Maze</strong>
+          <span>Navigate the grid</span>
+        </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="2" y="8" width="5" height="16" rx="1" stroke="#58a6ff" stroke-width="1.5" fill="rgba(88,166,255,0.1)"/>
+            <rect x="9" y="8" width="5" height="16" rx="1" stroke="#58a6ff" stroke-width="1.5" fill="rgba(88,166,255,0.1)"/>
+            <rect x="16" y="8" width="5" height="16" rx="1" stroke="#58a6ff" stroke-width="1.5" fill="rgba(88,166,255,0.1)"/>
+            <rect x="23" y="8" width="5" height="16" rx="1" stroke="#58a6ff" stroke-width="1.5" fill="rgba(88,166,255,0.1)"/>
+            <text x="4.5" y="19" text-anchor="middle" font-size="6" fill="#58a6ff">A</text>
+            <text x="11.5" y="19" text-anchor="middle" font-size="6" fill="#58a6ff">B</text>
+            <text x="18.5" y="19" text-anchor="middle" font-size="6" fill="#58a6ff">C</text>
+            <text x="25.5" y="19" text-anchor="middle" font-size="6" fill="#58a6ff">D</text>
+          </svg>
+          <strong>Password</strong>
+          <span>Spell the word</span>
+        </div>
+        <div class="help-module">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="18" r="10" stroke="#d29922" stroke-width="1.5"/>
+            <line x1="16" y1="8" x2="16" y2="12" stroke="#d29922" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="16" cy="18" r="2.5" fill="#d29922"/>
+            <circle cx="6" cy="5" r="2" fill="#d29922" opacity="0.7"/>
+            <circle cx="12" cy="5" r="2" fill="#d29922" opacity="0.3"/>
+            <circle cx="18" cy="5" r="2" fill="#d29922" opacity="0.7"/>
+            <circle cx="24" cy="5" r="2" fill="#d29922" opacity="0.3"/>
+          </svg>
+          <strong>Knob</strong>
+          <span>Read LEDs, set dial</span>
+        </div>
       </div>
 
       <!-- Warnings -->
@@ -403,11 +457,11 @@
             </button>
             <button class="btn btn-diff" data-diff="medium">
               <strong>Medium</strong>
-              <span>Wires+Button+Keypad · 4 min · 3 strikes</span>
+              <span>5 modules · 4 min · 3 strikes</span>
             </button>
             <button class="btn btn-diff" data-diff="hard">
               <strong>Hard</strong>
-              <span>5 modules · 3 min · Mistakes speed up timer</span>
+              <span>9 modules · 3 min · Mistakes speed up timer</span>
             </button>
             <button class="btn btn-diff" data-diff="custom">
               <strong>Custom</strong>
@@ -446,6 +500,10 @@
                 <label class="custom-checkbox"><input type="checkbox" id="custom-mod-keypad" checked> Keypad</label>
                 <label class="custom-checkbox"><input type="checkbox" id="custom-mod-simon"> Simon Says</label>
                 <label class="custom-checkbox"><input type="checkbox" id="custom-mod-morse"> Morse Code</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-memory"> Memory</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-maze"> Maze</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-password"> Password</label>
+                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-knob"> Knob</label>
               </div>
             </div>
             <div class="custom-row">
@@ -514,8 +572,14 @@
       <!-- Top Status Bar -->
       <div class="game-topbar">
         <div class="topbar-left">
-          <span class="topbar-title">TALK 2 DEFUSE</span>
+          <div class="topbar-title-wrap">
+            <span class="topbar-title" id="topbar-title">TALK 2 DEFUSE</span>
+            <div class="topbar-dropdown hidden" id="topbar-dropdown">
+              <button class="topbar-dropdown-item" id="btn-exit-game">Exit Game</button>
+            </div>
+          </div>
           <span id="game-bomb-type" class="bomb-type-badge">Bomb: ???</span>
+          <span id="game-room-code" class="room-code-badge" title="Room code — share to rejoin"></span>
           <span id="game-module-count" class="module-badge"></span>
         </div>
         <div class="topbar-center">
@@ -523,6 +587,7 @@
         </div>
         <div class="topbar-right">
           <div id="game-strikes" class="strikes-display"></div>
+          <button id="btn-guide-ingame" class="btn btn-tiny guide-topbar-btn" aria-label="Game Guide" title="Game Guide">📋 Guide</button>
           <button id="btn-help-ingame" class="btn btn-tiny" aria-label="Help">?</button>
           <button id="btn-settings-ingame" class="btn-settings-sm" title="Settings" aria-label="Settings">
             <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M10 13a3 3 0 100-6 3 3 0 000 6zm7.93-2.49a1.06 1.06 0 00-.79-.61l-.56-.09a6.93 6.93 0 00-.4-.96l.33-.46a1.06 1.06 0 00-.09-1.34l-1.47-1.47a1.06 1.06 0 00-1.34-.09l-.46.33a6.93 6.93 0 00-.96-.4l-.09-.56a1.06 1.06 0 00-1.05-.86h-2.1a1.06 1.06 0 00-1.05.86l-.09.56c-.33.11-.65.24-.96.4l-.46-.33a1.06 1.06 0 00-1.34.09L3.58 7.05a1.06 1.06 0 00-.09 1.34l.33.46c-.16.31-.29.63-.4.96l-.56.09a1.06 1.06 0 00-.86 1.05v2.1c0 .5.35.93.86 1.05l.56.09c.11.33.24.65.4.96l-.33.46a1.06 1.06 0 00.09 1.34l1.47 1.47a1.06 1.06 0 001.34.09l.46-.33c.31.16.63.29.96.4l.09.56a1.06 1.06 0 001.05.86h2.1a1.06 1.06 0 001.05-.86l.09-.56c.33-.11.65-.24.96-.4l.46.33a1.06 1.06 0 001.34-.09l1.47-1.47a1.06 1.06 0 00.09-1.34l-.33-.46c.16-.31.29-.63.4-.96l.56-.09a1.06 1.06 0 00.86-1.05v-2.1c0-.5-.35-.93-.86-1.05z"/></svg>
@@ -543,7 +608,15 @@
 
         <!-- Right: Chat Panel -->
         <div class="chat-panel">
-          <div class="chat-header">CHAT</div>
+          <div class="chat-header">
+            <span>CHAT</span>
+            <div id="voice-panel" class="voice-panel">
+              <button id="voice-mic-btn" class="btn btn-tiny voice-btn" title="Start/End voice call">🎤 Call</button>
+              <button id="voice-mute-btn" class="btn btn-tiny voice-btn" title="Toggle mute" style="display:none">🔊</button>
+              <button id="voice-mode-btn" class="btn btn-tiny voice-btn" title="Toggle PTT/Open mic" style="display:none">Open Mic</button>
+              <span id="voice-status" class="voice-status"></span>
+            </div>
+          </div>
           <div id="chat-messages" class="chat-messages">
             <!-- Messages injected here -->
           </div>
@@ -597,12 +670,55 @@
     <div class="explosion-drip drip-7"></div>
   </div>
 
+  <!-- ══════════════════════ MAGNIFYING GLASS ══════════════════════ -->
+  <div id="magnifier" class="magnifier hidden">
+    <div class="magnifier-lens" id="magnifier-lens"></div>
+    <div class="magnifier-handle"></div>
+  </div>
+
+  <!-- ══════════════════════ IN-GAME GUIDE SPOTLIGHT ══════════════════════ -->
+  <div id="guide-overlay" class="guide-overlay hidden">
+    <div class="guide-dimmer" id="guide-dimmer"></div>
+    <div class="guide-spotlight" id="guide-spotlight"></div>
+    <div class="guide-tooltip" id="guide-tooltip">
+      <div class="guide-tooltip-step" id="guide-tooltip-step"></div>
+      <h3 class="guide-tooltip-title" id="guide-tooltip-title"></h3>
+      <p class="guide-tooltip-text" id="guide-tooltip-text"></p>
+      <div class="guide-tooltip-buttons">
+        <button id="guide-back" class="btn btn-secondary btn-tiny">Back</button>
+        <button id="guide-skip" class="btn btn-link btn-tiny">Skip</button>
+        <button id="guide-next" class="btn btn-primary btn-tiny">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ INTERACTIVE TUTORIAL ══════════════════════ -->
+  <div id="tutorial-overlay" class="tutorial-overlay hidden">
+    <div class="tutorial-backdrop"></div>
+    <div class="tutorial-card">
+      <div class="tutorial-progress">
+        <div class="tutorial-progress-bar" id="tutorial-progress-bar"></div>
+      </div>
+      <div class="tutorial-step-counter" id="tutorial-step-counter">Step 1 of 8</div>
+      <div class="tutorial-illustration" id="tutorial-illustration"></div>
+      <h2 class="tutorial-title" id="tutorial-title"></h2>
+      <p class="tutorial-text" id="tutorial-text"></p>
+      <div class="tutorial-tip" id="tutorial-tip"></div>
+      <div class="tutorial-buttons">
+        <button id="tutorial-back" class="btn btn-secondary btn-tiny">Back</button>
+        <button id="tutorial-skip" class="btn btn-link btn-tiny">Skip Tutorial</button>
+        <button id="tutorial-next" class="btn btn-primary btn-tiny">Next</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification toast -->
   <div id="toast" class="toast hidden"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/landing-bg.js"></script>
+  <script src="js/voice.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

@@ -39,7 +39,7 @@ function calculateScore(won, timeRemaining, strikes, difficulty, totalTime) {
   return Math.max(0, Math.round(score));
 }
 
-const VALID_MODULES = ['wires', 'button', 'keypad', 'simon', 'morse'];
+const VALID_MODULES = ['wires', 'button', 'keypad', 'simon', 'morse', 'memory', 'maze', 'password', 'knob'];
 
 function validateCustomSettings(cs) {
   if (!cs || typeof cs !== 'object') return null;
@@ -239,6 +239,60 @@ function generateBomb(difficulty, customSettings) {
     });
   }
 
+  // ── Password Module (medium + hard, or custom) ─────────────────────────
+  if (isCustom ? customSettings.modules.includes('password') : (difficulty === 'medium' || difficulty === 'hard')) {
+    const word = pick(PASSWORD_WORDS);
+    const columns = [];
+    for (let i = 0; i < 5; i++) {
+      const correctLetter = word[i];
+      const pool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => l !== correctLetter);
+      const distractors = pickN(pool, 5);
+      columns.push(shuffle([correctLetter, ...distractors]));
+    }
+    bomb.modules.push({
+      type: 'password', columns, correctWord: word,
+      currentLetters: [0, 0, 0, 0, 0], solved: false,
+    });
+  }
+
+  // ── Memory Module (medium + hard, or custom) ─────────────────────────
+  if (isCustom ? customSettings.modules.includes('memory') : (difficulty === 'medium' || difficulty === 'hard')) {
+    const stages = generateMemoryStages(protocol);
+    bomb.modules.push({
+      type: 'memory', stages,
+      currentStage: 0, stageHistory: [], solved: false,
+    });
+  }
+
+  // ── Maze Module (hard only, or custom) ─────────────────────────
+  if (isCustom ? customSettings.modules.includes('maze') : difficulty === 'hard') {
+    const layout = pick(MAZE_LAYOUTS);
+    const wallSet = getMazeWallSet(layout);
+    // Pick random start and end that aren't the same or markers
+    const occupied = new Set(layout.markers.map(m => `${m.row},${m.col}`));
+    let start, end;
+    do { start = { row: Math.floor(Math.random() * 6), col: Math.floor(Math.random() * 6) }; }
+    while (occupied.has(`${start.row},${start.col}`));
+    do { end = { row: Math.floor(Math.random() * 6), col: Math.floor(Math.random() * 6) }; }
+    while (end.row === start.row && end.col === start.col || occupied.has(`${end.row},${end.col}`));
+    bomb.modules.push({
+      type: 'maze', grid: 6, walls: layout.walls,
+      wallSet: Array.from(wallSet), // serialize for checking
+      markers: layout.markers, start, end,
+      currentPos: { ...start }, solved: false,
+    });
+  }
+
+  // ── Knob Module (hard only, or custom) ─────────────────────────
+  if (isCustom ? customSettings.modules.includes('knob') : difficulty === 'hard') {
+    const patterns = KNOB_PATTERNS[protocol];
+    const chosen = pick(patterns);
+    bomb.modules.push({
+      type: 'knob', leds: chosen.leds,
+      correctPosition: chosen.position, currentPosition: 'UP', solved: false,
+    });
+  }
+
   // ── Morse Code Module (hard only, or custom) ─────────────────────────
   if (isCustom ? customSettings.modules.includes('morse') : difficulty === 'hard') {
     const morseWords = [
@@ -275,9 +329,9 @@ function determineSolveOrder(bomb) {
   const batteryGroup = bomb.batteries <= 1 ? 0 : bomb.batteries <= 3 ? 1 : 2;
   const isOdd = bomb.serialOdd;
   const orderTable = [
-    [['wires','keypad','button','simon','morse'], ['morse','simon','wires','button','keypad']],
-    [['button','wires','morse','keypad','simon'], ['keypad','morse','simon','wires','button']],
-    [['simon','button','keypad','morse','wires'], ['wires','morse','button','simon','keypad']],
+    [['wires','password','keypad','memory','button','maze','simon','knob','morse'], ['morse','knob','simon','maze','wires','memory','button','password','keypad']],
+    [['button','memory','wires','knob','morse','password','keypad','maze','simon'], ['keypad','maze','morse','password','simon','knob','wires','memory','button']],
+    [['simon','maze','button','password','keypad','memory','morse','knob','wires'], ['wires','knob','morse','memory','button','password','simon','maze','keypad']],
   ];
   const fullOrder = orderTable[batteryGroup][isOdd ? 1 : 0];
   const presentTypes = bomb.modules.map(m => m.type);
@@ -439,6 +493,153 @@ function buildSimonMap(hasVowel) {
   ];
 }
 
+// ── Password Module Word List ─────────────────────────────────
+const PASSWORD_WORDS = [
+  'ABOUT', 'AFTER', 'AGAIN', 'BELOW', 'COULD',
+  'EVERY', 'FIRST', 'FOUND', 'GREAT', 'HOUSE',
+  'LARGE', 'LEARN', 'NEVER', 'OTHER', 'PLACE',
+  'PLANT', 'POINT', 'RIGHT', 'SMALL', 'SOUND',
+  'SPELL', 'STILL', 'STUDY', 'THEIR', 'THERE',
+  'THESE', 'THING', 'THINK', 'THREE', 'WATER',
+  'WHERE', 'WHICH', 'WORLD', 'WOULD', 'WRITE',
+];
+
+// ── Maze Layouts (9 mazes, identified by 2 marker positions) ──
+const MAZE_LAYOUTS = [
+  { markers: [{row:0,col:1},{row:5,col:2}], walls: [[0,0,'d'],[0,1,'r'],[0,3,'d'],[0,4,'d'],[1,0,'r'],[1,2,'d'],[1,3,'r'],[1,5,'d'],[2,0,'d'],[2,1,'r'],[2,2,'r'],[2,4,'d'],[3,0,'r'],[3,2,'d'],[3,3,'r'],[3,4,'r'],[4,1,'d'],[4,2,'r'],[4,4,'d'],[5,1,'r'],[5,3,'r']] },
+  { markers: [{row:1,col:4},{row:3,col:0}], walls: [[0,1,'d'],[0,2,'r'],[0,4,'d'],[1,0,'d'],[1,1,'r'],[1,3,'d'],[1,4,'r'],[2,1,'d'],[2,2,'r'],[2,3,'r'],[2,5,'d'],[3,0,'r'],[3,2,'d'],[3,4,'d'],[4,0,'d'],[4,1,'r'],[4,3,'r'],[4,4,'r'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
+  { markers: [{row:2,col:3},{row:4,col:1}], walls: [[0,0,'d'],[0,2,'d'],[0,3,'r'],[0,5,'d'],[1,0,'r'],[1,1,'d'],[1,3,'d'],[1,4,'r'],[2,0,'d'],[2,2,'r'],[2,4,'d'],[3,1,'d'],[3,2,'d'],[3,3,'r'],[3,5,'d'],[4,0,'r'],[4,1,'r'],[4,3,'d'],[5,1,'r'],[5,3,'r'],[5,4,'r']] },
+  { markers: [{row:0,col:0},{row:3,col:5}], walls: [[0,1,'d'],[0,3,'d'],[0,4,'r'],[1,0,'r'],[1,2,'r'],[1,3,'r'],[1,5,'d'],[2,0,'d'],[2,1,'d'],[2,3,'r'],[2,4,'d'],[3,1,'r'],[3,2,'d'],[3,4,'r'],[4,0,'d'],[4,2,'r'],[4,3,'d'],[4,5,'d'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
+  { markers: [{row:1,col:1},{row:4,col:4}], walls: [[0,0,'d'],[0,2,'r'],[0,4,'d'],[0,5,'d'],[1,1,'d'],[1,2,'d'],[1,3,'r'],[2,0,'r'],[2,2,'r'],[2,4,'d'],[3,0,'d'],[3,1,'r'],[3,3,'d'],[3,4,'r'],[4,1,'d'],[4,2,'r'],[4,5,'d'],[5,0,'r'],[5,2,'r'],[5,3,'r']] },
+  { markers: [{row:2,col:0},{row:5,col:5}], walls: [[0,1,'d'],[0,2,'r'],[0,4,'d'],[1,0,'d'],[1,2,'d'],[1,3,'r'],[1,5,'d'],[2,1,'r'],[2,3,'d'],[2,4,'r'],[3,0,'r'],[3,1,'d'],[3,3,'r'],[3,5,'d'],[4,0,'d'],[4,2,'d'],[4,3,'r'],[4,4,'r'],[5,1,'r'],[5,3,'r']] },
+  { markers: [{row:0,col:4},{row:4,col:2}], walls: [[0,0,'d'],[0,2,'d'],[0,3,'r'],[1,0,'r'],[1,1,'d'],[1,4,'d'],[1,5,'d'],[2,0,'d'],[2,2,'r'],[2,3,'d'],[2,4,'r'],[3,1,'r'],[3,2,'r'],[3,4,'d'],[4,0,'r'],[4,1,'d'],[4,3,'r'],[4,5,'d'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
+  { markers: [{row:3,col:3},{row:5,col:0}], walls: [[0,0,'d'],[0,1,'r'],[0,4,'d'],[0,5,'d'],[1,1,'d'],[1,2,'r'],[1,4,'r'],[2,0,'r'],[2,2,'d'],[2,3,'r'],[2,5,'d'],[3,0,'d'],[3,1,'r'],[3,4,'d'],[4,0,'r'],[4,2,'d'],[4,3,'r'],[4,4,'r'],[5,1,'r'],[5,3,'r']] },
+  { markers: [{row:1,col:2},{row:3,col:4}], walls: [[0,0,'d'],[0,3,'d'],[0,4,'r'],[1,0,'r'],[1,1,'d'],[1,3,'r'],[1,5,'d'],[2,0,'d'],[2,2,'r'],[2,3,'d'],[2,4,'r'],[3,1,'d'],[3,2,'r'],[3,5,'d'],[4,0,'r'],[4,1,'r'],[4,3,'d'],[4,4,'r'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
+];
+
+// Convert maze wall shorthand to full wall set: [row, col, 'd'|'r'] = wall below or right of cell
+function getMazeWallSet(layout) {
+  const walls = new Set();
+  for (const w of layout.walls) {
+    if (w[2] === 'd') walls.add(`${w[0]},${w[1]}-${w[0]+1},${w[1]}`);
+    else walls.add(`${w[0]},${w[1]}-${w[0]},${w[1]+1}`);
+  }
+  return walls;
+}
+
+function isWallBlocking(wallSet, fromRow, fromCol, toRow, toCol) {
+  const key1 = `${Math.min(fromRow,toRow)},${Math.min(fromCol,toCol)}-${Math.max(fromRow,toRow)},${Math.max(fromCol,toCol)}`;
+  return wallSet.has(key1);
+}
+
+// ── Memory Module Solver ─────────────────────────────────────
+function generateMemoryStages(protocol) {
+  const stages = [];
+  for (let s = 0; s < 5; s++) {
+    const display = 1 + Math.floor(Math.random() * 4);
+    const buttons = shuffle([1, 2, 3, 4]);
+    stages.push({ display, buttons, correctAction: null });
+  }
+  // Now compute correct actions based on protocol
+  const history = []; // { label, position } for each completed stage
+  for (let s = 0; s < 5; s++) {
+    const d = stages[s].display;
+    const btns = stages[s].buttons;
+    let action;
+    if (protocol === 'Alpha') {
+      if (s === 0) {
+        action = [null, {type:'position',value:2}, {type:'position',value:2}, {type:'position',value:3}, {type:'position',value:4}][d];
+      } else if (s === 1) {
+        action = [null, {type:'label',value:history[0].label}, {type:'position',value:1}, {type:'position',value:1}, {type:'position',value:history[0].position}][d];
+      } else if (s === 2) {
+        action = [null, {type:'label',value:history[1].label}, {type:'label',value:history[0].label}, {type:'position',value:3}, {type:'position',value:history[1].position}][d];
+      } else if (s === 3) {
+        action = [null, {type:'position',value:history[0].position}, {type:'position',value:1}, {type:'label',value:history[1].label}, {type:'label',value:history[0].label}][d];
+      } else {
+        action = [null, {type:'label',value:history[0].label}, {type:'label',value:history[1].label}, {type:'label',value:history[3].label}, {type:'label',value:history[2].label}][d];
+      }
+    } else if (protocol === 'Bravo') {
+      if (s === 0) {
+        action = [null, {type:'position',value:1}, {type:'position',value:3}, {type:'position',value:2}, {type:'position',value:4}][d];
+      } else if (s === 1) {
+        action = [null, {type:'position',value:history[0].position}, {type:'position',value:2}, {type:'label',value:history[0].label}, {type:'position',value:1}][d];
+      } else if (s === 2) {
+        action = [null, {type:'label',value:history[0].label}, {type:'position',value:history[1].position}, {type:'position',value:1}, {type:'label',value:history[1].label}][d];
+      } else if (s === 3) {
+        action = [null, {type:'label',value:history[1].label}, {type:'position',value:history[0].position}, {type:'label',value:history[0].label}, {type:'position',value:history[1].position}][d];
+      } else {
+        action = [null, {type:'label',value:history[1].label}, {type:'label',value:history[3].label}, {type:'label',value:history[0].label}, {type:'label',value:history[2].label}][d];
+      }
+    } else { // Charlie
+      if (s === 0) {
+        action = [null, {type:'position',value:3}, {type:'position',value:1}, {type:'position',value:4}, {type:'position',value:2}][d];
+      } else if (s === 1) {
+        action = [null, {type:'position',value:2}, {type:'label',value:history[0].label}, {type:'position',value:history[0].position}, {type:'position',value:3}][d];
+      } else if (s === 2) {
+        action = [null, {type:'position',value:history[1].position}, {type:'label',value:history[1].label}, {type:'label',value:history[0].label}, {type:'position',value:1}][d];
+      } else if (s === 3) {
+        action = [null, {type:'label',value:history[0].label}, {type:'position',value:history[1].position}, {type:'label',value:history[2].label}, {type:'position',value:history[0].position}][d];
+      } else {
+        action = [null, {type:'label',value:history[2].label}, {type:'label',value:history[0].label}, {type:'label',value:history[1].label}, {type:'label',value:history[3].label}][d];
+      }
+    }
+    stages[s].correctAction = action;
+    // Resolve actual label/position for history
+    let pressedLabel, pressedPosition;
+    if (action.type === 'position') {
+      pressedPosition = action.value;
+      pressedLabel = btns[action.value - 1];
+    } else {
+      pressedLabel = action.value;
+      pressedPosition = btns.indexOf(action.value) + 1;
+    }
+    history.push({ label: pressedLabel, position: pressedPosition });
+  }
+  return stages;
+}
+
+// ── Knob Module Solver ─────────────────────────────────────
+const KNOB_PATTERNS = {
+  Alpha: [
+    { leds: [true,false,true,true,false,false, true,true,false,true,false,false], position: 'UP' },
+    { leds: [false,true,true,false,true,false, false,false,true,true,false,true], position: 'UP' },
+    { leds: [true,true,false,false,true,true, false,true,false,false,true,false], position: 'DOWN' },
+    { leds: [false,false,true,true,false,true, true,false,true,false,true,true], position: 'DOWN' },
+    { leds: [true,false,false,true,true,false, false,true,true,false,false,true], position: 'LEFT' },
+    { leds: [false,true,false,true,false,true, true,false,false,true,true,false], position: 'LEFT' },
+    { leds: [true,true,true,false,false,false, false,false,false,true,true,true], position: 'RIGHT' },
+    { leds: [false,false,false,true,true,true, true,true,true,false,false,false], position: 'RIGHT' },
+  ],
+  Bravo: [
+    { leds: [false,true,false,true,true,false, true,false,true,false,false,true], position: 'UP' },
+    { leds: [true,false,true,false,false,true, false,true,false,true,true,false], position: 'UP' },
+    { leds: [true,true,false,true,false,false, false,false,true,false,true,true], position: 'DOWN' },
+    { leds: [false,false,true,false,true,true, true,true,false,true,false,false], position: 'DOWN' },
+    { leds: [false,true,true,false,false,true, true,false,false,true,true,false], position: 'LEFT' },
+    { leds: [true,false,false,true,true,false, false,true,true,false,false,true], position: 'LEFT' },
+    { leds: [true,true,false,false,true,false, false,true,false,false,true,true], position: 'RIGHT' },
+    { leds: [false,false,true,true,false,true, true,false,true,true,false,false], position: 'RIGHT' },
+  ],
+  Charlie: [
+    { leds: [true,false,false,true,false,true, false,true,true,false,true,false], position: 'UP' },
+    { leds: [false,true,true,false,true,false, true,false,false,true,false,true], position: 'UP' },
+    { leds: [false,false,true,true,true,false, true,true,false,false,false,true], position: 'DOWN' },
+    { leds: [true,true,false,false,false,true, false,false,true,true,true,false], position: 'DOWN' },
+    { leds: [true,false,true,false,true,true, false,true,false,true,false,false], position: 'LEFT' },
+    { leds: [false,true,false,true,false,false, true,false,true,false,true,true], position: 'LEFT' },
+    { leds: [false,true,true,true,false,false, true,false,false,false,true,true], position: 'RIGHT' },
+    { leds: [true,false,false,false,true,true, false,true,true,true,false,false], position: 'RIGHT' },
+  ],
+};
+
+function solveKnobForProtocol(leds, protocol) {
+  const patterns = KNOB_PATTERNS[protocol];
+  for (const p of patterns) {
+    if (p.leds.every((v, i) => v === leds[i])) return p.position;
+  }
+  return 'UP'; // fallback
+}
+
 // ══════════════════════ MANUAL GENERATION ══════════════════════
 
 function generateManual(bomb) {
@@ -475,7 +676,7 @@ function generateManual(bomb) {
       indicators: dInds.join(', '),
       batteries: Math.floor(Math.random() * 5),
       ports: pickN(PORT_TYPES, Math.floor(Math.random() * 3)).join(', ') || 'None',
-      modules: shuffle(['wires', 'button', 'keypad', 'simon', 'morse']).slice(0, dModCount),
+      modules: shuffle(VALID_MODULES).slice(0, dModCount),
     });
   }
 
@@ -492,7 +693,7 @@ function generateManual(bomb) {
       indicators: dInds.join(', '),
       batteries: Math.floor(Math.random() * 5),
       ports: pickN(PORT_TYPES, Math.floor(Math.random() * 3)).join(', ') || 'None',
-      modules: shuffle(['wires', 'button', 'keypad', 'simon', 'morse']).slice(0, dModCount),
+      modules: shuffle(VALID_MODULES).slice(0, dModCount),
     });
   }
   manual.bombIndex = shuffle(manual.bombIndex);
@@ -559,12 +760,12 @@ function generateManual(bomb) {
     table: {
       headers: ['Batteries', 'Serial Last Digit', 'Solve Order'],
       rows: [
-        ['0\u20131', 'Even', 'Wires \u2192 Keypad \u2192 Button \u2192 Simon \u2192 Morse'],
-        ['0\u20131', 'Odd', 'Morse \u2192 Simon \u2192 Wires \u2192 Button \u2192 Keypad'],
-        ['2\u20133', 'Even', 'Button \u2192 Wires \u2192 Morse \u2192 Keypad \u2192 Simon'],
-        ['2\u20133', 'Odd', 'Keypad \u2192 Morse \u2192 Simon \u2192 Wires \u2192 Button'],
-        ['4+', 'Even', 'Simon \u2192 Button \u2192 Keypad \u2192 Morse \u2192 Wires'],
-        ['4+', 'Odd', 'Wires \u2192 Morse \u2192 Button \u2192 Simon \u2192 Keypad'],
+        ['0\u20131', 'Even', 'Wires \u2192 Password \u2192 Keypad \u2192 Memory \u2192 Button \u2192 Maze \u2192 Simon \u2192 Knob \u2192 Morse'],
+        ['0\u20131', 'Odd', 'Morse \u2192 Knob \u2192 Simon \u2192 Maze \u2192 Wires \u2192 Memory \u2192 Button \u2192 Password \u2192 Keypad'],
+        ['2\u20133', 'Even', 'Button \u2192 Memory \u2192 Wires \u2192 Knob \u2192 Morse \u2192 Password \u2192 Keypad \u2192 Maze \u2192 Simon'],
+        ['2\u20133', 'Odd', 'Keypad \u2192 Maze \u2192 Morse \u2192 Password \u2192 Simon \u2192 Knob \u2192 Wires \u2192 Memory \u2192 Button'],
+        ['4+', 'Even', 'Simon \u2192 Maze \u2192 Button \u2192 Password \u2192 Keypad \u2192 Memory \u2192 Morse \u2192 Knob \u2192 Wires'],
+        ['4+', 'Odd', 'Wires \u2192 Knob \u2192 Morse \u2192 Memory \u2192 Button \u2192 Password \u2192 Simon \u2192 Maze \u2192 Keypad'],
       ],
     },
     note: 'Skip module types not present on the bomb. Example: if the bomb has only Wires, Button, Keypad \u2014 use only those from the sequence above, in order.',
@@ -793,6 +994,72 @@ function generateManual(bomb) {
     };
   }
 
+  // ── Password Chapter (protocol-independent) ────────────────
+  if (bomb.modules.some(m => m.type === 'password')) {
+    manual.chapters.password = {
+      title: 'Password Module',
+      description: 'The module displays 5 letter columns. Each column can be cycled up/down to change the displayed letter. Find the word from the list below that can be spelled using letters available in each column. Submit the word. (Same for all protocols.)',
+      wordList: PASSWORD_WORDS,
+      note: 'Ask the executor to read the available letters for each column. Cross-reference against the word list to find the only valid word.',
+    };
+  }
+
+  // ── Memory Chapter (protocol-dependent) ────────────────────
+  if (bomb.modules.some(m => m.type === 'memory')) {
+    manual.chapters.memory = {
+      title: 'Memory Module',
+      description: 'This module has 5 stages. Each stage shows a display number (1\u20134) and 4 buttons labeled 1\u20134. You must press the correct button each stage. Later stages reference what was pressed in earlier stages. Track BOTH the label AND the position pressed each stage.',
+      protocols: {
+        Alpha: { stages: [
+          { title: 'Stage 1', rules: ['Display is 1 → press POSITION 2', 'Display is 2 → press POSITION 2', 'Display is 3 → press POSITION 3', 'Display is 4 → press POSITION 4'] },
+          { title: 'Stage 2', rules: ['Display is 1 → press the LABEL you pressed in Stage 1', 'Display is 2 → press POSITION 1', 'Display is 3 → press POSITION 1', 'Display is 4 → press the same POSITION as Stage 1'] },
+          { title: 'Stage 3', rules: ['Display is 1 → press the LABEL you pressed in Stage 2', 'Display is 2 → press the LABEL you pressed in Stage 1', 'Display is 3 → press POSITION 3', 'Display is 4 → press the same POSITION as Stage 2'] },
+          { title: 'Stage 4', rules: ['Display is 1 → press the same POSITION as Stage 1', 'Display is 2 → press POSITION 1', 'Display is 3 → press the LABEL you pressed in Stage 2', 'Display is 4 → press the LABEL you pressed in Stage 1'] },
+          { title: 'Stage 5', rules: ['Display is 1 → press the LABEL you pressed in Stage 1', 'Display is 2 → press the LABEL you pressed in Stage 2', 'Display is 3 → press the LABEL you pressed in Stage 4', 'Display is 4 → press the LABEL you pressed in Stage 3'] },
+        ]},
+        Bravo: { stages: [
+          { title: 'Stage 1', rules: ['Display is 1 → press POSITION 1', 'Display is 2 → press POSITION 3', 'Display is 3 → press POSITION 2', 'Display is 4 → press POSITION 4'] },
+          { title: 'Stage 2', rules: ['Display is 1 → press the same POSITION as Stage 1', 'Display is 2 → press POSITION 2', 'Display is 3 → press the LABEL you pressed in Stage 1', 'Display is 4 → press POSITION 1'] },
+          { title: 'Stage 3', rules: ['Display is 1 → press the LABEL you pressed in Stage 1', 'Display is 2 → press the same POSITION as Stage 2', 'Display is 3 → press POSITION 1', 'Display is 4 → press the LABEL you pressed in Stage 2'] },
+          { title: 'Stage 4', rules: ['Display is 1 → press the LABEL you pressed in Stage 2', 'Display is 2 → press the same POSITION as Stage 1', 'Display is 3 → press the LABEL you pressed in Stage 1', 'Display is 4 → press the same POSITION as Stage 2'] },
+          { title: 'Stage 5', rules: ['Display is 1 → press the LABEL you pressed in Stage 2', 'Display is 2 → press the LABEL you pressed in Stage 4', 'Display is 3 → press the LABEL you pressed in Stage 1', 'Display is 4 → press the LABEL you pressed in Stage 3'] },
+        ]},
+        Charlie: { stages: [
+          { title: 'Stage 1', rules: ['Display is 1 → press POSITION 3', 'Display is 2 → press POSITION 1', 'Display is 3 → press POSITION 4', 'Display is 4 → press POSITION 2'] },
+          { title: 'Stage 2', rules: ['Display is 1 → press POSITION 2', 'Display is 2 → press the LABEL you pressed in Stage 1', 'Display is 3 → press the same POSITION as Stage 1', 'Display is 4 → press POSITION 3'] },
+          { title: 'Stage 3', rules: ['Display is 1 → press the same POSITION as Stage 2', 'Display is 2 → press the LABEL you pressed in Stage 2', 'Display is 3 → press the LABEL you pressed in Stage 1', 'Display is 4 → press POSITION 1'] },
+          { title: 'Stage 4', rules: ['Display is 1 → press the LABEL you pressed in Stage 1', 'Display is 2 → press the same POSITION as Stage 2', 'Display is 3 → press the LABEL you pressed in Stage 3', 'Display is 4 → press the same POSITION as Stage 1'] },
+          { title: 'Stage 5', rules: ['Display is 1 → press the LABEL you pressed in Stage 3', 'Display is 2 → press the LABEL you pressed in Stage 1', 'Display is 3 → press the LABEL you pressed in Stage 2', 'Display is 4 → press the LABEL you pressed in Stage 4'] },
+        ]},
+      },
+      note: 'CRITICAL: You must track what was pressed (both LABEL and POSITION) for every stage. A mistake at any point resets to Stage 1. "POSITION" means the physical button slot (1st, 2nd, 3rd, 4th from left). "LABEL" means the number written on the button.',
+    };
+  }
+
+  // ── Maze Chapter (protocol-independent) ────────────────────
+  if (bomb.modules.some(m => m.type === 'maze')) {
+    manual.chapters.maze = {
+      title: 'Maze Module',
+      description: 'The executor must navigate from the white circle (start) to the red triangle (end) on a 6×6 grid. The executor can see their position, start, and end — but NOT the walls. You (the instructor) can identify the maze by the TWO GREEN CIRCLE MARKERS. Find the matching maze below and guide the executor. Moving into a wall causes a STRIKE. (Same for all protocols.)',
+      mazes: MAZE_LAYOUTS.map(l => ({ markers: l.markers, walls: l.walls })),
+      note: 'Ask the executor for the marker positions (row, column — top-left is 1,1). Match to one of the 9 mazes below. Then guide step by step: "move up", "move right", etc.',
+    };
+  }
+
+  // ── Knob Chapter (protocol-dependent) ──────────────────────
+  if (bomb.modules.some(m => m.type === 'knob')) {
+    manual.chapters.knob = {
+      title: 'Knob Module',
+      description: 'The module has a 12-LED display (2 rows of 6) and a rotatable dial with 4 positions: UP, DOWN, LEFT, RIGHT. Ask the executor to read the LED pattern (top row left-to-right, then bottom row). Find the matching pattern below for your protocol and set the dial to the indicated position.',
+      protocols: {
+        Alpha: { patterns: KNOB_PATTERNS.Alpha.map(p => ({ leds: p.leds, position: p.position })) },
+        Bravo: { patterns: KNOB_PATTERNS.Bravo.map(p => ({ leds: p.leds, position: p.position })) },
+        Charlie: { patterns: KNOB_PATTERNS.Charlie.map(p => ({ leds: p.leds, position: p.position })) },
+      },
+      note: 'The LED pattern uniquely identifies which position to set. The same pattern always maps to the same position within a protocol, but different protocols have different mappings.',
+    };
+  }
+
   // ── Appendix Chapter (always present) ──────────────────────
   manual.chapters.appendix = {
     title: 'Appendix',
@@ -836,7 +1103,7 @@ function generateManual(bomb) {
     { text: '← common mistake here' },
     { text: 'READ CAREFULLY' },
   ];
-  const moduleChapters = Object.keys(manual.chapters).filter(k => ['wires','button','keypad','simon','morse'].includes(k));
+  const moduleChapters = Object.keys(manual.chapters).filter(k => VALID_MODULES.includes(k));
   const noteChapters = moduleChapters.length > 0 ? moduleChapters : ['overview'];
   const noteCount = 1 + Math.floor(Math.random() * 2);
   manual.marginNotes = pickN(marginNotePool, noteCount).map(n => ({
@@ -859,8 +1126,58 @@ function generateManual(bomb) {
 
 // ══════════════════════ SOCKET.IO ══════════════════════
 
+// ── Rate Limiting ───────────────────────────────────────────
+const rateLimits = new Map();
+function checkRateLimit(socketId, limit = 10) {
+  const now = Date.now();
+  if (!rateLimits.has(socketId)) rateLimits.set(socketId, []);
+  const timestamps = rateLimits.get(socketId);
+  // Remove entries older than 1 second
+  while (timestamps.length > 0 && timestamps[0] < now - 1000) timestamps.shift();
+  if (timestamps.length >= limit) return false;
+  timestamps.push(now);
+  return true;
+}
+
 io.on('connection', (socket) => {
   console.log(`[connect] ${socket.id}`);
+
+  // ── Solo Practice Mode ─────────────────────────────────────
+  socket.on('create-solo', ({ playerName, difficulty, customSettings: cs }, cb) => {
+    const code = generateRoomCode();
+    const validCS = cs ? validateCustomSettings(cs) : null;
+    const room = {
+      players: [{ id: socket.id, name: playerName, role: 'solo', ready: true, connected: true }],
+      bomb: null, state: 'playing', difficulty: difficulty || 'easy', solo: true,
+      customSettings: validCS,
+      timerTimeout: null, timerSpeed: 1, briefingReady: [],
+    };
+    rooms.set(code, room);
+    socket.join(code);
+    socket.roomCode = code;
+    // Generate bomb with extended timer for practice
+    const bomb = generateBomb(room.difficulty, room.customSettings);
+    bomb.timer = Math.round(bomb.timer * 1.5); // 50% more time for practice
+    room.bomb = bomb;
+    // Send both views to the solo player
+    cb({ code });
+    io.to(socket.id).emit('solo-start', {
+      bomb: getExecutorView(bomb),
+      manual: bomb.manual,
+      timer: bomb.timer,
+      maxStrikes: bomb.maxStrikes,
+      difficulty: room.difficulty,
+    });
+    startTimer(code, room);
+  });
+
+  // ── Daily Challenge ────────────────────────────────────────
+  socket.on('get-daily-seed', (_, cb) => {
+    if (typeof cb === 'function') {
+      const today = new Date().toISOString().slice(0, 10);
+      cb({ seed: today });
+    }
+  });
 
   socket.on('create-room', ({ playerName }, cb) => {
     const code = generateRoomCode();
@@ -880,7 +1197,9 @@ io.on('connection', (socket) => {
     if (!room) return cb({ error: 'Room not found.' });
     if (room.players.length >= 2) return cb({ error: 'Room is full.' });
     if (room.state !== 'lobby') return cb({ error: 'Game already in progress.' });
-    room.players.push({ id: socket.id, name: playerName, role: null, ready: false });
+    room.players.push({ id: socket.id, name: playerName, role: null, ready: false, connected: true });
+    // Reset existing players' ready state when someone new joins
+    room.players.forEach(p => { p.ready = false; });
     socket.join(roomCode);
     socket.roomCode = roomCode;
     cb({ success: true });
@@ -897,6 +1216,8 @@ io.on('connection', (socket) => {
       return;
     }
     player.role = role;
+    // Reset all ready states when roles change
+    room.players.forEach(p => { p.ready = false; });
     io.to(socket.roomCode).emit('lobby-update', getLobbyState(room));
   });
 
@@ -970,7 +1291,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.roomCode);
     if (!room || room.state !== 'playing') return;
     const player = room.players.find(p => p.id === socket.id);
-    if (!player || player.role !== 'executor') return;
+    if (!player || (player.role !== 'executor' && player.role !== 'solo')) return;
     const mod = room.bomb.modules[moduleIndex];
     if (!mod || mod.type !== 'wires' || mod.solved) return;
     if (mod.cutWires.includes(wireIndex)) return;
@@ -1121,8 +1442,117 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ── Password Module ────────────────────────────────────────
+  socket.on('password-cycle', ({ moduleIndex, column, direction }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.state !== 'playing') return;
+    const mod = room.bomb.modules[moduleIndex];
+    if (!mod || mod.type !== 'password' || mod.solved) return;
+    if (column < 0 || column >= 5) return;
+    const colLen = mod.columns[column].length;
+    mod.currentLetters[column] = (mod.currentLetters[column] + (direction === 'up' ? -1 : 1) + colLen) % colLen;
+    emitGameUpdate(socket.roomCode, room, { event: 'password-cycle' });
+  });
+
+  socket.on('password-submit', ({ moduleIndex }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.state !== 'playing') return;
+    const mod = room.bomb.modules[moduleIndex];
+    if (!mod || mod.type !== 'password' || mod.solved) return;
+    const word = mod.currentLetters.map((idx, col) => mod.columns[col][idx]).join('');
+    if (word === mod.correctWord) {
+      mod.solved = true;
+      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'password' });
+      checkWin(socket.roomCode, room);
+    } else {
+      addStrike(socket.roomCode, room, `Wrong password! "${word}" is incorrect.`);
+    }
+  });
+
+  // ── Memory Module ─────────────────────────────────────────
+  socket.on('memory-press', ({ moduleIndex, label, position }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.state !== 'playing') return;
+    const mod = room.bomb.modules[moduleIndex];
+    if (!mod || mod.type !== 'memory' || mod.solved) return;
+    const stage = mod.stages[mod.currentStage];
+    const action = stage.correctAction;
+    let correct = false;
+    if (action.type === 'position' && position === action.value) correct = true;
+    if (action.type === 'label' && label === action.value) correct = true;
+    if (correct) {
+      mod.stageHistory.push({ label, position });
+      mod.currentStage++;
+      if (mod.currentStage >= mod.stages.length) {
+        mod.solved = true;
+        checkSequenceViolation(socket.roomCode, room, moduleIndex);
+        emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'memory' });
+        checkWin(socket.roomCode, room);
+      } else {
+        emitGameUpdate(socket.roomCode, room, { event: 'memory-stage-complete', stage: mod.currentStage });
+      }
+    } else {
+      mod.currentStage = 0;
+      mod.stageHistory = [];
+      addStrike(socket.roomCode, room, 'Wrong button! Memory module reset to Stage 1.');
+    }
+  });
+
+  // ── Maze Module ───────────────────────────────────────────
+  socket.on('maze-move', ({ moduleIndex, direction }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.state !== 'playing') return;
+    const mod = room.bomb.modules[moduleIndex];
+    if (!mod || mod.type !== 'maze' || mod.solved) return;
+    const { row, col } = mod.currentPos;
+    let newRow = row, newCol = col;
+    if (direction === 'up') newRow--;
+    else if (direction === 'down') newRow++;
+    else if (direction === 'left') newCol--;
+    else if (direction === 'right') newCol++;
+    else return;
+    if (newRow < 0 || newRow >= mod.grid || newCol < 0 || newCol >= mod.grid) {
+      addStrike(socket.roomCode, room, 'Hit the edge of the maze!');
+      return;
+    }
+    const wallSet = new Set(mod.wallSet);
+    if (isWallBlocking(wallSet, row, col, newRow, newCol)) {
+      addStrike(socket.roomCode, room, 'Hit a wall in the maze!');
+      return;
+    }
+    mod.currentPos = { row: newRow, col: newCol };
+    if (newRow === mod.end.row && newCol === mod.end.col) {
+      mod.solved = true;
+      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'maze' });
+      checkWin(socket.roomCode, room);
+    } else {
+      emitGameUpdate(socket.roomCode, room, { event: 'maze-moved' });
+    }
+  });
+
+  // ── Knob Module ───────────────────────────────────────────
+  socket.on('knob-set', ({ moduleIndex, position }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.state !== 'playing') return;
+    const mod = room.bomb.modules[moduleIndex];
+    if (!mod || mod.type !== 'knob' || mod.solved) return;
+    if (!['UP', 'DOWN', 'LEFT', 'RIGHT'].includes(position)) return;
+    mod.currentPosition = position;
+    if (position === mod.correctPosition) {
+      mod.solved = true;
+      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'knob' });
+      checkWin(socket.roomCode, room);
+    } else {
+      addStrike(socket.roomCode, room, `Wrong position! "${position}" is incorrect.`);
+    }
+  });
+
   // ── Chat ──────────────────────────────────────────────────
   socket.on('chat-message', ({ text }) => {
+    if (!checkRateLimit(socket.id, 5)) return; // Max 5 messages/second
     const room = rooms.get(socket.roomCode);
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
@@ -1134,10 +1564,43 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('typing', () => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const partner = room.players.find(p => p.id !== socket.id);
+    if (partner) io.to(partner.id).emit('partner-typing');
+  });
+
   socket.on('edit-message', ({ messageId, newText }) => {
     const room = rooms.get(socket.roomCode);
     if (!room) return;
     io.to(socket.roomCode).emit('message-edited', { messageId, newText: newText.slice(0, 200) });
+  });
+
+  // ── Voice Chat Signaling ────────────────────────────────────
+  socket.on('voice-offer', ({ sdp }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const partner = room.players.find(p => p.id !== socket.id);
+    if (partner) io.to(partner.id).emit('voice-offer', { sdp });
+  });
+  socket.on('voice-answer', ({ sdp }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const partner = room.players.find(p => p.id !== socket.id);
+    if (partner) io.to(partner.id).emit('voice-answer', { sdp });
+  });
+  socket.on('voice-ice', ({ candidate }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const partner = room.players.find(p => p.id !== socket.id);
+    if (partner) io.to(partner.id).emit('voice-ice', { candidate });
+  });
+  socket.on('voice-hangup', () => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const partner = room.players.find(p => p.id !== socket.id);
+    if (partner) io.to(partner.id).emit('voice-hangup');
   });
 
   socket.on('play-again', ({ difficulty, customSettings }) => {
@@ -1158,18 +1621,75 @@ io.on('connection', (socket) => {
     if (typeof cb === 'function') cb(getScoreboard());
   });
 
+  // ── Reconnection Support ────────────────────────────────────
+  socket.on('reconnect-room', ({ roomCode: rc, playerName }, cb) => {
+    const room = rooms.get(rc);
+    if (!room) { if (typeof cb === 'function') cb({ error: 'Room no longer exists.' }); return; }
+    const player = room.players.find(p => p.name === playerName && !p.connected);
+    if (!player) { if (typeof cb === 'function') cb({ error: 'No matching disconnected player.' }); return; }
+    // Re-associate socket
+    player.id = socket.id;
+    player.connected = true;
+    delete player.disconnectedAt;
+    socket.roomCode = rc;
+    socket.join(rc);
+    if (room.reconnectTimeout) { clearTimeout(room.reconnectTimeout); room.reconnectTimeout = null; }
+    // Resume game if it was paused
+    if (room.state === 'playing' && room.pausedTimer != null) {
+      room.bomb.timer = room.pausedTimer;
+      delete room.pausedTimer;
+      startTimer(rc, room);
+    }
+    io.to(rc).emit('partner-reconnected');
+    // Send full state to reconnected player
+    if (room.state === 'playing') {
+      const data = player.role === 'executor'
+        ? { role: 'executor', bomb: getExecutorView(room.bomb), difficulty: room.difficulty }
+        : { role: 'instructor', manual: room.bomb.manual, timer: room.bomb.timer, maxStrikes: room.bomb.maxStrikes, difficulty: room.difficulty };
+      io.to(socket.id).emit('game-resume', data);
+    } else if (room.state === 'lobby') {
+      io.to(socket.id).emit('back-to-lobby', getLobbyState(room));
+    }
+    if (typeof cb === 'function') cb({ success: true, state: room.state });
+  });
+
   socket.on('disconnect', () => {
     const code = socket.roomCode;
     if (!code) return;
     const room = rooms.get(code);
     if (!room) return;
-    room.players = room.players.filter(p => p.id !== socket.id);
-    if (room.players.length === 0) {
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    if (room.state === 'playing') {
+      // Pause instead of ending — give 30s to reconnect
+      player.connected = false;
+      player.disconnectedAt = Date.now();
       if (room.timerTimeout) { clearTimeout(room.timerTimeout); room.timerTimeout = null; }
-      rooms.delete(code);
+      room.pausedTimer = room.bomb.timer;
+      io.to(code).emit('partner-disconnected-temp', { holdDuration: 30000 });
+      room.reconnectTimeout = setTimeout(() => {
+        // Timed out — end game
+        if (room.players.some(p => !p.connected)) {
+          room.players = room.players.filter(p => p.connected);
+          if (room.players.length === 0) {
+            rooms.delete(code);
+          } else {
+            endGame(code, room, false, 'Partner disconnected.');
+            io.to(code).emit('partner-disconnected');
+          }
+        }
+      }, 30000);
     } else {
-      if (room.state === 'playing') endGame(code, room, false, 'Partner disconnected.');
-      io.to(code).emit('partner-disconnected');
+      // Not in game — remove immediately
+      room.players = room.players.filter(p => p.id !== socket.id);
+      if (room.players.length === 0) {
+        if (room.timerTimeout) { clearTimeout(room.timerTimeout); room.timerTimeout = null; }
+        rooms.delete(code);
+      } else {
+        io.to(code).emit('partner-disconnected');
+        if (room.state === 'lobby') io.to(code).emit('lobby-update', getLobbyState(room));
+      }
     }
   });
 });
@@ -1201,13 +1721,20 @@ function getExecutorView(bomb) {
       if (m.type === 'keypad') return { type: 'keypad', symbols: m.symbols, pressedSymbols: [...m.pressedSymbols], solved: m.solved };
       if (m.type === 'simon') return { type: 'simon', currentStep: m.currentStep, sequenceLength: m.sequence.length, solved: m.solved };
       if (m.type === 'morse') return { type: 'morse', word: m.word, solved: m.solved };
+      if (m.type === 'password') return { type: 'password', columns: m.columns, currentLetters: [...m.currentLetters], solved: m.solved };
+      if (m.type === 'memory') return { type: 'memory', currentStage: m.currentStage, totalStages: m.stages.length, display: m.stages[Math.min(m.currentStage, m.stages.length - 1)].display, buttons: m.stages[Math.min(m.currentStage, m.stages.length - 1)].buttons, solved: m.solved };
+      if (m.type === 'maze') return { type: 'maze', grid: m.grid, markers: m.markers, start: m.start, end: m.end, currentPos: { ...m.currentPos }, solved: m.solved };
+      if (m.type === 'knob') return { type: 'knob', leds: m.leds, currentPosition: m.currentPosition, solved: m.solved };
     }),
   };
 }
 
 function emitGameUpdate(code, room, extra) {
   room.players.forEach(p => {
-    if (p.role === 'executor') {
+    if (p.role === 'solo') {
+      // Solo player gets both views
+      io.to(p.id).emit('game-update', { bomb: getExecutorView(room.bomb), strikes: room.bomb.strikes, maxStrikes: room.bomb.maxStrikes, timerSpeed: room.timerSpeed || 1, ...extra });
+    } else if (p.role === 'executor') {
       io.to(p.id).emit('game-update', { bomb: getExecutorView(room.bomb), timerSpeed: room.timerSpeed || 1, ...extra });
     } else {
       io.to(p.id).emit('game-update', { strikes: room.bomb.strikes, maxStrikes: room.bomb.maxStrikes, timerSpeed: room.timerSpeed || 1, ...extra });
@@ -1324,27 +1851,30 @@ function endGame(code, room, won, reason) {
   const modulesSolved = room.bomb.modules.filter(m => m.solved).length;
   const totalModules = room.bomb.modules.length;
 
-  const executor = room.players.find(p => p.role === 'executor');
+  const executor = room.players.find(p => p.role === 'executor') || room.players.find(p => p.role === 'solo');
   const instructor = room.players.find(p => p.role === 'instructor');
 
-  const record = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    executor: executor ? executor.name : '???',
-    instructor: instructor ? instructor.name : '???',
-    difficulty: room.difficulty,
-    won,
-    score,
-    timeRemaining: room.bomb.timer,
-    totalTime,
-    strikes: room.bomb.strikes,
-    maxStrikes: room.bomb.maxStrikes,
-    modulesSolved,
-    totalModules,
-    protocol: room.bomb.protocol,
-    reason,
-    timestamp: Date.now(),
-  };
-  saveScore(record);
+  // Don't save solo practice to leaderboard
+  if (!room.solo) {
+    const record = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      executor: executor ? executor.name : '???',
+      instructor: instructor ? instructor.name : '???',
+      difficulty: room.difficulty,
+      won,
+      score,
+      timeRemaining: room.bomb.timer,
+      totalTime,
+      strikes: room.bomb.strikes,
+      maxStrikes: room.bomb.maxStrikes,
+      modulesSolved,
+      totalModules,
+      protocol: room.bomb.protocol,
+      reason,
+      timestamp: Date.now(),
+    };
+    saveScore(record);
+  }
 
   io.to(code).emit('game-over', {
     won, reason, timeRemaining: room.bomb.timer,

@@ -104,6 +104,17 @@ function showScreen(name) {
   screens[name].classList.add('active');
   // Stop menu music when leaving landing/lobby
   if (name !== 'landing' && name !== 'lobby') AudioFX.stopMenuMusic();
+  // Show room code in game topbar
+  if (name === 'game' && roomCode) {
+    const el = document.getElementById('game-room-code');
+    if (el) el.textContent = 'Room: ' + roomCode;
+  }
+  // Hide magnifier when leaving game
+  if (name !== 'game' && typeof magActive !== 'undefined' && magActive) {
+    magActive = false;
+    const mag = document.getElementById('magnifier');
+    if (mag) mag.classList.add('hidden');
+  }
 }
 
 // ══════════════════════ LANDING ══════════════════════
@@ -127,25 +138,221 @@ codeInput.addEventListener('input', () => {
 btnCreate.addEventListener('click', () => {
   AudioFX.fuseLit();
   myName = nameInput.value.trim();
-  socket.emit('create-room', { playerName: myName }, (res) => {
-    if (res.code) { roomCode = res.code; enterLobby(); }
-  });
+  const pendingCode = codeInput.value.trim();
+  if (pendingCode.length === 4) {
+    // Code is filled in — join/reconnect that room instead of creating new
+    tryJoinOrReconnect(pendingCode, myName);
+  } else {
+    socket.emit('create-room', { playerName: myName }, (res) => {
+      if (res.code) { roomCode = res.code; enterLobby(); }
+    });
+  }
 });
+function tryJoinOrReconnect(code, name) {
+  socket.emit('join-room', { roomCode: code, playerName: name }, (res) => {
+    if (res.error) {
+      // If game in progress, try reconnecting instead
+      socket.emit('reconnect-room', { roomCode: code, playerName: name }, (rRes) => {
+        if (rRes && rRes.success) {
+          roomCode = code;
+          myName = name;
+          // game-resume event will handle showing the game screen
+        } else {
+          landingError.textContent = res.error;
+          landingError.classList.remove('hidden');
+          codeInput.classList.add('input-error');
+          setTimeout(() => codeInput.classList.remove('input-error'), 2000);
+        }
+      });
+    } else { roomCode = code; enterLobby(); }
+  });
+}
+
 btnJoin.addEventListener('click', () => {
   AudioFX.fuseLit();
   myName = nameInput.value.trim();
   const code = codeInput.value.trim();
-  socket.emit('join-room', { roomCode: code, playerName: myName }, (res) => {
-    if (res.error) {
-      landingError.textContent = res.error;
-      landingError.classList.remove('hidden');
-      codeInput.classList.add('input-error');
-      setTimeout(() => codeInput.classList.remove('input-error'), 2000);
-    } else { roomCode = code; enterLobby(); }
-  });
+  tryJoinOrReconnect(code, myName);
 });
 codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !btnJoin.disabled) btnJoin.click(); });
 nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !btnCreate.disabled) btnCreate.click(); });
+
+// Solo Practice
+let isSoloMode = false;
+function exitSoloMode() {
+  isSoloMode = false;
+  const chatPanel = document.querySelector('.chat-panel');
+  if (chatPanel) chatPanel.classList.remove('solo-hidden');
+  const content = document.getElementById('game-content');
+  if (content) content.classList.remove('solo-content');
+}
+let soloDifficulty = 'medium';
+let soloRound = 1;
+const SOLO_ROUNDS_PER_LEVEL = { easy: 3, medium: 3, hard: 2 };
+const ALL_MODULE_TYPES = ['wires', 'button', 'keypad', 'simon', 'morse', 'memory', 'maze', 'password', 'knob'];
+
+// Pick N random modules (always includes wires on round 1 of easy)
+function pickSoloModules(difficulty, round) {
+  let count;
+  if (difficulty === 'easy') {
+    count = round === 1 ? 1 : 2; // Round 1: 1 module, Round 2-3: 2 modules
+  } else if (difficulty === 'medium') {
+    count = round === 1 ? 3 : (round === 2 ? 4 : 5);
+  } else {
+    count = round === 1 ? 6 : 7 + Math.floor(Math.random() * 3); // 6, then 7-9
+  }
+  count = Math.min(count, ALL_MODULE_TYPES.length);
+
+  // First round of easy always starts with wires as intro
+  if (difficulty === 'easy' && round === 1) return ['wires'];
+
+  // Always include wires, then pick random others
+  const others = ALL_MODULE_TYPES.filter(m => m !== 'wires');
+  const shuffled = others.sort(() => Math.random() - 0.5);
+  const picked = ['wires', ...shuffled.slice(0, count - 1)];
+  return picked;
+}
+
+function buildSoloSettings(difficulty, round) {
+  const modules = pickSoloModules(difficulty, round);
+  const timerMap = { easy: 300, medium: 360, hard: 300 };
+  // More modules = more time, but not linearly
+  const baseTime = timerMap[difficulty] || 300;
+  const extraTime = Math.max(0, modules.length - 1) * 30;
+  return {
+    timer: baseTime + extraTime,
+    maxStrikes: difficulty === 'hard' ? 2 : 3,
+    wireCount: 3 + Math.floor(Math.random() * 3), // 3-5
+    modules,
+    sequenceEnforcement: false,
+    strikeSpeedup: difficulty === 'hard',
+  };
+}
+
+document.getElementById('btn-solo').addEventListener('click', () => {
+  const name = nameInput.value.trim();
+  if (!name) { landingError.textContent = 'Enter a callsign first.'; landingError.classList.remove('hidden'); return; }
+
+  // Show solo difficulty picker
+  const existing = document.getElementById('solo-picker');
+  if (existing) { existing.remove(); return; }
+
+  const picker = document.createElement('div');
+  picker.id = 'solo-picker';
+  picker.className = 'solo-picker';
+  picker.innerHTML = `
+    <div class="solo-picker-title">Solo Practice — Choose Difficulty</div>
+    <div class="solo-picker-buttons">
+      <button class="btn btn-diff solo-diff-btn" data-diff="easy"><strong>Easy</strong><span>1–2 modules · 3 rounds</span></button>
+      <button class="btn btn-diff solo-diff-btn" data-diff="medium"><strong>Medium</strong><span>3–5 modules · 3 rounds</span></button>
+      <button class="btn btn-diff solo-diff-btn" data-diff="hard"><strong>Hard</strong><span>6–9 modules · 2 rounds</span></button>
+    </div>
+    <button class="btn btn-link solo-picker-cancel" style="margin-top:8px;font-size:12px">Cancel</button>
+  `;
+  document.querySelector('.action-card').appendChild(picker);
+
+  picker.querySelector('.solo-picker-cancel').addEventListener('click', () => picker.remove());
+  picker.querySelectorAll('.solo-diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      soloDifficulty = btn.dataset.diff;
+      picker.remove();
+      AudioFX.fuseLit();
+      myName = name;
+      soloDifficulty = btn.dataset.diff;
+      soloRound = 1;
+      const cs = buildSoloSettings(soloDifficulty, soloRound);
+      socket.emit('create-solo', { playerName: myName, difficulty: 'custom', customSettings: cs }, (res) => {
+        if (res.code) { roomCode = res.code; }
+      });
+    });
+  });
+});
+
+socket.on('solo-start', (data) => {
+  isSoloMode = true;
+  myRole = 'solo';
+  bombState = data.bomb;
+  manualData = data.manual;
+  gameDifficulty = soloDifficulty;
+  showScreen('game');
+  renderSoloView();
+  updateTimer(data.timer, 1);
+  updateStrikes(0, data.maxStrikes);
+  const diffLabel = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[soloDifficulty] || 'Practice';
+  const totalRounds = SOLO_ROUNDS_PER_LEVEL[soloDifficulty] || 3;
+  const modCount = bombState.modules.length;
+  document.getElementById('game-bomb-type').textContent = `${diffLabel} ${soloRound}/${totalRounds} — ${modCount} module${modCount > 1 ? 's' : ''}`;
+});
+
+function renderSoloView() {
+  // Hide chat panel in solo mode
+  const chatPanel = document.querySelector('.chat-panel');
+  if (chatPanel) chatPanel.classList.add('solo-hidden');
+
+  const content = document.getElementById('game-content');
+  content.classList.add('solo-content');
+  document.getElementById('game-module-count').textContent = `${bombState.modules.length} module${bombState.modules.length > 1 ? 's' : ''}`;
+
+  // Tab setup
+  const tabOrder = ['index', 'overview', 'procedures', 'sequence'];
+  const moduleOrder = ['wires', 'button', 'keypad', 'simon', 'morse', 'memory', 'maze', 'password', 'knob'];
+  moduleOrder.forEach(m => { if (manualData.chapters[m]) tabOrder.push(m); });
+  tabOrder.push('appendix');
+  const tabLabels = { index: 'Index', overview: 'Overview', procedures: 'Procedures', sequence: 'Sequence', wires: 'Wires', button: 'Button', keypad: 'Keypad', simon: 'Simon', morse: 'Morse', memory: 'Memory', maze: 'Maze', password: 'Password', knob: 'Knob', appendix: 'Appendix' };
+
+  let html = '<div class="solo-layout">';
+
+  // Top: Bomb info + modules
+  html += '<div class="solo-bomb-section">';
+  html += '<div class="solo-section-label">BOMB</div>';
+
+  // Bomb info plate for solo — needed to look up protocol
+  html += '<div class="solo-bomb-info">';
+  html += `<div class="solo-info-item"><span class="solo-info-label">Serial</span><span class="solo-info-value serial-value">${bombState.serial}</span></div>`;
+  html += `<div class="solo-info-item"><span class="solo-info-label">Shape</span><span class="solo-info-value">${cap(bombState.shape)}</span></div>`;
+  html += `<div class="solo-info-item"><span class="solo-info-label">Size</span><span class="solo-info-value">${cap(bombState.size)}</span></div>`;
+  html += `<div class="solo-info-item"><span class="solo-info-label">Batteries</span><span class="solo-info-value">${bombState.batteries}</span></div>`;
+  const indStr = bombState.indicators.map(i => `<span class="solo-ind${i.lit ? ' lit' : ''}">${i.lit ? '●' : '○'} ${i.label}</span>`).join(' ');
+  html += `<div class="solo-info-item"><span class="solo-info-label">Indicators</span><span class="solo-info-value">${indStr}</span></div>`;
+  html += `<div class="solo-info-item"><span class="solo-info-label">Ports</span><span class="solo-info-value">${bombState.ports.join(', ') || 'None'}</span></div>`;
+  html += '</div>';
+
+  html += '<div class="solo-module-grid">';
+  bombState.modules.forEach((mod, mi) => html += renderModule(mod, mi));
+  html += '</div></div>';
+
+  // Bottom: Manual
+  html += '<div class="solo-manual-section">';
+  html += '<div class="solo-section-label">MANUAL</div>';
+  html += '<div class="manual-container">';
+  html += '<div class="manual-cover-header"><div class="manual-header-text"><span class="manual-classification">PRACTICE</span><div class="manual-title-text">Bomb Disposal Manual</div></div></div>';
+  html += '<div class="manual-tabs">';
+  tabOrder.forEach(tab => {
+    if (tab === 'index' || manualData.chapters[tab]) {
+      html += `<button class="manual-tab${currentManualTab === tab ? ' active' : ''}" data-tab="${tab}">${tabLabels[tab] || cap(tab)}</button>`;
+    }
+  });
+  html += '</div>';
+  html += '<div class="manual-search"><button id="btn-magnifier-solo" class="btn btn-tiny manual-guide-btn" title="Magnifying Glass">🔍</button></div>';
+  html += `<div class="manual-body" id="manual-body">${renderManualTab(currentManualTab)}</div>`;
+  html += '</div></div>';
+
+  html += '</div>';
+  content.innerHTML = html;
+  attachExecutorListeners();
+
+  // Auto-show magnifier for solo
+  if (!magActive) toggleMagnifier();
+
+  document.querySelectorAll('.manual-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      currentManualTab = tab.dataset.tab;
+      document.querySelectorAll('.manual-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentManualTab));
+      document.getElementById('manual-body').innerHTML = renderManualTab(currentManualTab);
+      AudioFX.click();
+    });
+  });
+}
 
 // Help modal
 document.getElementById('btn-how-to-play').addEventListener('click', () => document.getElementById('modal-help').classList.remove('hidden'));
@@ -287,6 +494,7 @@ document.getElementById('btn-leave-lobby').addEventListener('click', () => {
   socket.disconnect();
   socket.connect();
   showScreen('landing');
+  exitSoloMode();
   nameInput.value = '';
   codeInput.value = '';
   updateLandingButtons();
@@ -334,6 +542,10 @@ function readCustomSettingsFromUI() {
   if (document.getElementById('custom-mod-keypad').checked) customSettings.modules.push('keypad');
   if (document.getElementById('custom-mod-simon').checked) customSettings.modules.push('simon');
   if (document.getElementById('custom-mod-morse').checked) customSettings.modules.push('morse');
+  if (document.getElementById('custom-mod-memory').checked) customSettings.modules.push('memory');
+  if (document.getElementById('custom-mod-maze').checked) customSettings.modules.push('maze');
+  if (document.getElementById('custom-mod-password').checked) customSettings.modules.push('password');
+  if (document.getElementById('custom-mod-knob').checked) customSettings.modules.push('knob');
 }
 
 function emitCustomSettings() {
@@ -353,6 +565,10 @@ function applyCustomSettingsToUI(cs) {
   document.getElementById('custom-mod-keypad').checked = cs.modules.includes('keypad');
   document.getElementById('custom-mod-simon').checked = cs.modules.includes('simon');
   document.getElementById('custom-mod-morse').checked = cs.modules.includes('morse');
+  document.getElementById('custom-mod-memory').checked = cs.modules.includes('memory');
+  document.getElementById('custom-mod-maze').checked = cs.modules.includes('maze');
+  document.getElementById('custom-mod-password').checked = cs.modules.includes('password');
+  document.getElementById('custom-mod-knob').checked = cs.modules.includes('knob');
   document.getElementById('custom-sequence').checked = cs.sequenceEnforcement;
   document.getElementById('custom-speedup').checked = cs.strikeSpeedup;
   customSettings = cs;
@@ -366,6 +582,7 @@ function applyCustomSettingsToUI(cs) {
 });
 // Checkboxes + toggles
 ['custom-mod-button', 'custom-mod-keypad', 'custom-mod-simon', 'custom-mod-morse',
+ 'custom-mod-memory', 'custom-mod-maze', 'custom-mod-password', 'custom-mod-knob',
  'custom-sequence', 'custom-speedup'].forEach(id => {
   document.getElementById(id).addEventListener('change', emitCustomSettings);
 });
@@ -386,6 +603,16 @@ socket.on('lobby-update', (state) => {
     if (state.customSettings) applyCustomSettingsToUI(state.customSettings);
   } else {
     customPanel.classList.add('hidden');
+  }
+  // Reset Ready button if conditions aren't met (so player can re-ready after changes)
+  const me = state.players.find(p => p.name === myName);
+  const readyBtn = document.getElementById('btn-ready');
+  if (me && me.ready && state.players.length === 2 && state.players.every(p => p.role) &&
+      state.players.some(p => p.role === 'instructor') && state.players.some(p => p.role === 'executor')) {
+    // All good — keep waiting
+  } else if (me && !me.ready) {
+    readyBtn.disabled = false;
+    readyBtn.textContent = 'Ready';
   }
 });
 
@@ -667,7 +894,7 @@ function renderModule(mod, mi) {
   const sc = mod.solved ? ' solved' : '';
   const ledClass = mod.solved ? 'solved-led' : 'unsolved';
   const solvedBadge = mod.solved ? '<span class="module-solved-badge">&#10003; DEFUSED</span>' : '';
-  const moduleNames = { wires: 'Wires', button: 'Button', keypad: 'Keypad', simon: 'Simon Says', morse: 'Morse Code' };
+  const moduleNames = { wires: 'Wires', button: 'Button', keypad: 'Keypad', simon: 'Simon Says', morse: 'Morse Code', memory: 'Memory', maze: 'Maze', password: 'Password', knob: 'Knob' };
   const title = moduleNames[mod.type] || cap(mod.type);
 
   let html = `<div class="module-panel${sc}" data-module="${mi}" data-type="${mod.type}">`;
@@ -744,6 +971,79 @@ function renderModule(mod, mi) {
       html += '</select>';
       html += `<button class="btn btn-primary btn-tiny morse-submit-btn" data-module="${mi}">Submit</button>`;
       html += '</div></div>';
+      break;
+    }
+    case 'password': {
+      html += '<div class="password-container">';
+      html += '<div class="password-columns">';
+      for (let c = 0; c < 5; c++) {
+        const letterIdx = mod.currentLetters ? mod.currentLetters[c] : 0;
+        const letter = mod.columns[c][letterIdx];
+        html += `<div class="password-column" data-module="${mi}" data-col="${c}">`;
+        html += `<button class="btn btn-tiny password-arrow password-up" data-module="${mi}" data-col="${c}" data-dir="up" aria-label="Cycle column ${c+1} up">\u25B2</button>`;
+        html += `<div class="password-letter">${letter}</div>`;
+        html += `<button class="btn btn-tiny password-arrow password-down" data-module="${mi}" data-col="${c}" data-dir="down" aria-label="Cycle column ${c+1} down">\u25BC</button>`;
+        html += '</div>';
+      }
+      html += '</div>';
+      html += `<button class="btn btn-primary btn-tiny password-submit-btn" data-module="${mi}">Submit Word</button>`;
+      html += '</div>';
+      break;
+    }
+    case 'memory': {
+      const stageNum = mod.currentStage + 1;
+      const total = mod.totalStages || 5;
+      html += '<div class="memory-container">';
+      html += `<div class="memory-stage-indicator">Stage ${Math.min(stageNum, total)} / ${total}</div>`;
+      html += `<div class="memory-display">${mod.display}</div>`;
+      html += '<div class="memory-buttons">';
+      mod.buttons.forEach((label, idx) => {
+        html += `<button class="memory-button" data-module="${mi}" data-label="${label}" data-position="${idx+1}" tabindex="0" role="button" aria-label="Button labeled ${label} at position ${idx+1}">${label}</button>`;
+      });
+      html += '</div></div>';
+      break;
+    }
+    case 'maze': {
+      html += '<div class="maze-container">';
+      html += `<div class="maze-grid" id="maze-grid-${mi}">`;
+      for (let r = 0; r < mod.grid; r++) {
+        for (let c = 0; c < mod.grid; c++) {
+          let cellClass = 'maze-cell';
+          let content = '';
+          if (r === mod.currentPos.row && c === mod.currentPos.col) { cellClass += ' maze-player'; content = '\u25CF'; }
+          else if (r === mod.start.row && c === mod.start.col) { cellClass += ' maze-start'; content = '\u25CB'; }
+          else if (r === mod.end.row && c === mod.end.col) { cellClass += ' maze-end'; content = '\u25B2'; }
+          mod.markers.forEach(m => { if (m.row === r && m.col === c) { cellClass += ' maze-marker'; if (!content) content = '\u25C9'; } });
+          html += `<div class="${cellClass}" data-row="${r}" data-col="${c}">${content}</div>`;
+        }
+      }
+      html += '</div>';
+      html += '<div class="maze-controls">';
+      html += `<button class="btn btn-tiny maze-dir-btn" data-module="${mi}" data-dir="up" aria-label="Move up">\u25B2</button>`;
+      html += '<div class="maze-controls-row">';
+      html += `<button class="btn btn-tiny maze-dir-btn" data-module="${mi}" data-dir="left" aria-label="Move left">\u25C0</button>`;
+      html += `<button class="btn btn-tiny maze-dir-btn" data-module="${mi}" data-dir="down" aria-label="Move down">\u25BC</button>`;
+      html += `<button class="btn btn-tiny maze-dir-btn" data-module="${mi}" data-dir="right" aria-label="Move right">\u25B6</button>`;
+      html += '</div></div></div>';
+      break;
+    }
+    case 'knob': {
+      html += '<div class="knob-container">';
+      html += '<div class="knob-led-grid">';
+      for (let i = 0; i < 12; i++) {
+        if (i === 6) html += '</div><div class="knob-led-grid">';
+        html += `<div class="knob-led${mod.leds[i] ? ' on' : ''}"></div>`;
+      }
+      html += '</div>';
+      html += '<div class="knob-dial-container">';
+      const positions = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+      positions.forEach(pos => {
+        const active = mod.currentPosition === pos ? ' active' : '';
+        html += `<button class="btn btn-tiny knob-position-btn${active}" data-module="${mi}" data-position="${pos}" aria-label="Set dial to ${pos}">${pos}</button>`;
+      });
+      html += '</div>';
+      html += `<button class="btn btn-primary btn-tiny knob-submit-btn" data-module="${mi}">Set Position</button>`;
+      html += '</div>';
       break;
     }
   }
@@ -833,6 +1133,71 @@ function attachExecutorListeners() {
       if (sel.value) {
         showConfirmation({ clientX: btn.getBoundingClientRect().left, clientY: btn.getBoundingClientRect().top - 10 },
           `Submit frequency ${sel.value} MHz?`, () => socket.emit('morse-submit', { moduleIndex: mi, freq: sel.value }));
+      }
+    });
+  });
+
+  // Password
+  document.querySelectorAll('.password-arrow').forEach(btn => {
+    btn.addEventListener('click', () => {
+      socket.emit('password-cycle', { moduleIndex: +btn.dataset.module, column: +btn.dataset.col, direction: btn.dataset.dir });
+      AudioFX.click();
+    });
+  });
+  document.querySelectorAll('.password-submit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mi = +btn.dataset.module;
+      const mod = bombState.modules[mi];
+      const word = mod.currentLetters.map((idx, c) => mod.columns[c][idx]).join('');
+      showConfirmation({ clientX: btn.getBoundingClientRect().left, clientY: btn.getBoundingClientRect().top - 10 },
+        `Submit word "${word}"?`, () => socket.emit('password-submit', { moduleIndex: mi }));
+    });
+  });
+
+  // Memory
+  document.querySelectorAll('.memory-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mi = +btn.dataset.module;
+      const label = +btn.dataset.label;
+      const position = +btn.dataset.position;
+      socket.emit('memory-press', { moduleIndex: mi, label, position });
+      AudioFX.keypadBeep();
+    });
+  });
+
+  // Maze
+  document.querySelectorAll('.maze-dir-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      socket.emit('maze-move', { moduleIndex: +btn.dataset.module, direction: btn.dataset.dir });
+      AudioFX.click();
+    });
+  });
+  // Maze keyboard controls
+  document.addEventListener('keydown', (e) => {
+    if (!bombState) return;
+    const mazeIdx = bombState.modules.findIndex(m => m.type === 'maze' && !m.solved);
+    if (mazeIdx === -1) return;
+    const dirMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    const dir = dirMap[e.key];
+    if (dir) { e.preventDefault(); socket.emit('maze-move', { moduleIndex: mazeIdx, direction: dir }); AudioFX.click(); }
+  });
+
+  // Knob
+  document.querySelectorAll('.knob-position-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.knob-position-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      AudioFX.click();
+    });
+  });
+  document.querySelectorAll('.knob-submit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mi = +btn.dataset.module;
+      const activeBtn = document.querySelector(`.knob-position-btn.active[data-module="${mi}"]`);
+      if (activeBtn) {
+        const pos = activeBtn.dataset.position;
+        showConfirmation({ clientX: btn.getBoundingClientRect().left, clientY: btn.getBoundingClientRect().top - 10 },
+          `Set dial to ${pos}?`, () => socket.emit('knob-set', { moduleIndex: mi, position: pos }));
       }
     });
   });
@@ -935,12 +1300,13 @@ const WIRE_SVG = `<svg viewBox="0 0 120 56" width="100" height="47" fill="none" 
 
 function renderInstructorView() {
   const content = document.getElementById('game-content');
-  document.getElementById('game-bomb-type').textContent = 'Bomb: Identify from Index';
+  document.getElementById('game-bomb-type').textContent = 'Manual';
   document.getElementById('game-module-count').textContent = '';
+  if (roomCode) document.getElementById('game-room-code').textContent = 'Room: ' + roomCode;
 
   // Tab order: index, overview, procedures, sequence, module chapters (conditional), appendix
   const tabOrder = ['overview', 'procedures', 'sequence'];
-  const moduleOrder = ['wires', 'button', 'keypad', 'simon', 'morse'];
+  const moduleOrder = ['wires', 'button', 'keypad', 'simon', 'morse', 'memory', 'maze', 'password', 'knob'];
   moduleOrder.forEach(m => { if (manualData.chapters[m]) tabOrder.push(m); });
   tabOrder.push('appendix');
   const tabNames = ['index', ...tabOrder.filter(t => manualData.chapters[t])];
@@ -955,17 +1321,21 @@ function renderInstructorView() {
   html += '<div class="manual-subtitle-text">Field Reference Guide &mdash; Talk 2 Defuse Division</div>';
   html += '</div></div>';
   // Tabs
-  const tabLabels = { index: 'Index', overview: 'Overview', procedures: 'Procedures', sequence: 'Sequence', wires: 'Wires', button: 'Button', keypad: 'Keypad', simon: 'Simon', morse: 'Morse', appendix: 'Appendix' };
+  const tabLabels = { index: 'Index', overview: 'Overview', procedures: 'Procedures', sequence: 'Sequence', wires: 'Wires', button: 'Button', keypad: 'Keypad', simon: 'Simon', morse: 'Morse', memory: 'Memory', maze: 'Maze', password: 'Password', knob: 'Knob', appendix: 'Appendix' };
   html += '<div class="manual-tabs">';
   tabNames.forEach(tab => {
     const label = tabLabels[tab] || cap(tab);
     html += `<button class="manual-tab${currentManualTab === tab ? ' active' : ''}" data-tab="${tab}">${label}</button>`;
   });
   html += '</div>';
-  html += '<div class="manual-search"><input type="text" id="manual-search-input" placeholder="Search manual..." autocomplete="off"></div>';
+  html += '<div class="manual-search"><input type="text" id="manual-search-input" placeholder="Search manual..." autocomplete="off"><button id="btn-magnifier" class="btn btn-tiny manual-guide-btn" title="Magnifying Glass">🔍</button><button id="btn-book-guide" class="btn btn-tiny manual-guide-btn" title="Manual Guide">📋 Guide</button></div>';
   html += `<div class="manual-body" id="manual-body">${renderManualTab(currentManualTab)}</div>`;
   html += '</div>';
   content.innerHTML = html;
+
+  document.getElementById('btn-book-guide').addEventListener('click', () => { startBookGuide(); AudioFX.click(); });
+  // Auto-show magnifier for instructor
+  if (!magActive) toggleMagnifier();
 
   document.querySelectorAll('.manual-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1180,7 +1550,7 @@ function renderManualTab(tab) {
   // Find page number
   const allTabs = ['index'];
   const tabOrder2 = ['overview', 'procedures', 'sequence'];
-  const moduleOrder2 = ['wires', 'button', 'keypad', 'simon', 'morse'];
+  const moduleOrder2 = ['wires', 'button', 'keypad', 'simon', 'morse', 'memory', 'maze', 'password', 'knob'];
   moduleOrder2.forEach(m => { if (manualData.chapters[m]) tabOrder2.push(m); });
   tabOrder2.push('appendix');
   tabOrder2.forEach(t => { if (manualData.chapters[t]) allTabs.push(t); });
@@ -1212,12 +1582,20 @@ function renderManualTab(tab) {
     keypad: `<svg viewBox="0 0 50 50" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="17" height="17" rx="3"/><rect x="28" y="5" width="17" height="17" rx="3"/><rect x="5" y="28" width="17" height="17" rx="3"/><rect x="28" y="28" width="17" height="17" rx="3"/></svg>`,
     simon: `<svg viewBox="0 0 50 50" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="20" height="20" rx="4" fill="rgba(220,53,69,0.3)"/><rect x="27" y="3" width="20" height="20" rx="4" fill="rgba(13,110,253,0.3)"/><rect x="3" y="27" width="20" height="20" rx="4" fill="rgba(25,135,84,0.3)"/><rect x="27" y="27" width="20" height="20" rx="4" fill="rgba(255,193,7,0.3)"/></svg>`,
     morse: `<svg viewBox="0 0 60 30" width="50" height="25" fill="currentColor" opacity="0.6"><circle cx="6" cy="15" r="4"/><rect x="16" y="11" width="14" height="8" rx="4"/><circle cx="38" cy="15" r="4"/><circle cx="50" cy="15" r="4"/></svg>`,
+    memory: `<svg viewBox="0 0 50 50" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2"><rect x="10" y="3" width="30" height="16" rx="3"/><text x="25" y="14" text-anchor="middle" font-size="10" fill="currentColor" stroke="none" font-weight="bold">3</text><rect x="3" y="28" width="10" height="16" rx="2"/><rect x="16" y="28" width="10" height="16" rx="2"/><rect x="29" y="28" width="10" height="16" rx="2"/><rect x="42" y="28" width="6" height="16" rx="2"/></svg>`,
+    maze: `<svg viewBox="0 0 50 50" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="42" height="42"/><line x1="4" y1="11" x2="18" y2="11"/><line x1="25" y1="4" x2="25" y2="18"/><line x1="32" y1="11" x2="46" y2="11"/><line x1="11" y1="18" x2="25" y2="18"/><line x1="32" y1="25" x2="46" y2="25"/><line x1="4" y1="32" x2="18" y2="32"/><line x1="25" y1="32" x2="25" y2="46"/><circle cx="10" cy="25" r="3" fill="currentColor"/><circle cx="40" cy="39" r="2" fill="rgba(220,53,69,0.6)"/></svg>`,
+    password: `<svg viewBox="0 0 50 50" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="8" height="30" rx="2"/><rect x="14" y="10" width="8" height="30" rx="2"/><rect x="25" y="10" width="8" height="30" rx="2"/><rect x="36" y="10" width="8" height="30" rx="2"/><text x="7" y="28" text-anchor="middle" font-size="8" fill="currentColor" stroke="none">A</text><text x="18" y="28" text-anchor="middle" font-size="8" fill="currentColor" stroke="none">B</text><text x="29" y="28" text-anchor="middle" font-size="8" fill="currentColor" stroke="none">C</text><text x="40" y="28" text-anchor="middle" font-size="8" fill="currentColor" stroke="none">D</text></svg>`,
+    knob: `<svg viewBox="0 0 50 50" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2"><circle cx="25" cy="28" r="14"/><line x1="25" y1="14" x2="25" y2="20" stroke-width="3" stroke-linecap="round"/><circle cx="25" cy="28" r="3" fill="currentColor"/><circle cx="10" cy="8" r="2" fill="currentColor" opacity="0.5"/><circle cx="18" cy="8" r="2" fill="currentColor"/><circle cx="26" cy="8" r="2" fill="currentColor" opacity="0.5"/><circle cx="34" cy="8" r="2" fill="currentColor"/><circle cx="42" cy="8" r="2" fill="currentColor" opacity="0.5"/></svg>`,
     appendix: `<svg viewBox="0 0 50 50" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="38" height="42" rx="3"/><line x1="12" y1="12" x2="38" y2="12"/><line x1="12" y1="20" x2="38" y2="20"/><line x1="12" y1="28" x2="38" y2="28"/><line x1="12" y1="36" x2="28" y2="36"/></svg>`,
   };
   const pageSubs = {
     overview: 'Device Schematic Reference',
     procedures: 'Standard Operating Procedures',
     sequence: 'Required Defusal Sequence',
+    memory: 'Multi-Stage Recall Protocol',
+    maze: 'Navigation Grid Reference',
+    password: 'Word Identification Protocol',
+    knob: 'LED Pattern Dial Reference',
     appendix: 'Quick Reference Tables',
   };
   const icon = pageIcons[tab] || BOMB_SVG;
@@ -1334,6 +1712,33 @@ function renderManualTab(tab) {
         html += '</ol>';
       }
 
+      // Memory-style: stages with rules
+      if (protoData.stages) {
+        protoData.stages.forEach(stage => {
+          html += `<h4 class="section-subtitle">${stage.title}</h4>`;
+          html += '<ol class="rule-list">';
+          stage.rules.forEach(r => html += `<li>${r}</li>`);
+          html += '</ol>';
+        });
+      }
+
+      // Knob-style: LED pattern table
+      if (protoData.patterns) {
+        html += '<div class="knob-pattern-table">';
+        protoData.patterns.forEach(p => {
+          html += '<div class="knob-pattern-row">';
+          html += '<div class="knob-pattern-leds">';
+          for (let i = 0; i < 12; i++) {
+            if (i === 6) html += '</div><div class="knob-pattern-leds">';
+            html += `<span class="knob-manual-led${p.leds[i] ? ' on' : ''}"></span>`;
+          }
+          html += '</div>';
+          html += `<span class="knob-pattern-position">\u2192 ${p.position}</span>`;
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
       html += '</div>';
     });
 
@@ -1430,6 +1835,64 @@ function renderManualTab(tab) {
     html += '</tbody></table>';
   }
 
+  // ── Password word list ──
+  if (ch.wordList) {
+    html += '<h3 class="section-subtitle">Valid Words</h3>';
+    html += '<table class="password-word-table"><tbody>';
+    const cols = 5;
+    for (let i = 0; i < ch.wordList.length; i += cols) {
+      html += '<tr>';
+      for (let j = 0; j < cols; j++) {
+        const w = ch.wordList[i + j];
+        html += w ? `<td class="password-word-cell">${w}</td>` : '<td></td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+  }
+
+  // ── Memory stages (protocol-dependent, rendered via ch.protocols[].stages) ──
+  if (ch.protocols && tab === 'memory') {
+    // Already handled by the protocol renderer above via protoData.stages
+    // Add extra rendering for stage rules here
+    const protoClassMap = { Alpha: 'proto-alpha', Bravo: 'proto-bravo', Charlie: 'proto-charlie' };
+    const protoStampMap = { Alpha: 'STANDARD', Bravo: 'PRIORITY', Charlie: 'CRITICAL' };
+    // Clear previously rendered protocol sections (memory uses stages not sections/rules)
+    // Re-render with stage-specific layout
+  }
+
+  // ── Maze diagrams ──
+  if (ch.mazes) {
+    html += '<h3 class="section-subtitle">Maze Layouts</h3>';
+    html += '<div class="maze-manual-grid">';
+    ch.mazes.forEach((maze, idx) => {
+      html += `<div class="maze-manual-item"><div class="maze-manual-label">Maze ${idx + 1} — Markers: (${maze.markers[0].row + 1},${maze.markers[0].col + 1}) and (${maze.markers[1].row + 1},${maze.markers[1].col + 1})</div>`;
+      html += '<div class="maze-manual-diagram">';
+      for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 6; c++) {
+          let cls = 'maze-manual-cell';
+          // Check walls: right and down
+          const hasWallRight = maze.walls.some(w => w[0] === r && w[1] === c && w[2] === 'r');
+          const hasWallDown = maze.walls.some(w => w[0] === r && w[1] === c && w[2] === 'd');
+          if (hasWallRight) cls += ' wall-right';
+          if (hasWallDown) cls += ' wall-down';
+          let content = '';
+          if (maze.markers.some(m => m.row === r && m.col === c)) { cls += ' marker'; content = '\u25C9'; }
+          html += `<div class="${cls}">${content}</div>`;
+        }
+      }
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Knob LED patterns (rendered via protocol system above) ──
+  // Additional knob-specific rendering for LED pattern tables
+  if (tab === 'knob' && ch.protocols) {
+    // The protocol renderer above handles this via protoData.patterns
+    // We need to render LED pattern tables specifically
+  }
+
   // ── Appendix ──
   if (tab === 'appendix') {
     // NATO Phonetic Alphabet
@@ -1485,7 +1948,7 @@ function renderManualTab(tab) {
 // ══════════════════════ GAME UPDATES ══════════════════════
 socket.on('game-update', (data) => {
   if (data.timerSpeed) timerSpeed = data.timerSpeed;
-  if (data.bomb) { bombState = data.bomb; renderExecutorView(); }
+  if (data.bomb) { bombState = data.bomb; if (isSoloMode) renderSoloView(); else renderExecutorView(); }
   if (data.event === 'sequence-violation') {
     AudioFX.strike();
     showToast(data.message || 'Wrong sequence! Strike + time accelerated!');
@@ -1502,6 +1965,16 @@ socket.on('game-update', (data) => {
       const mi = bombState.modules.findIndex(m => m.type === 'simon' && !m.solved);
       if (mi >= 0) socket.emit('simon-replay', { moduleIndex: mi });
     }, 800);
+  }
+  if (data.event === 'memory-stage-complete') {
+    showToast(`Memory: Stage ${data.stage} complete!`);
+    AudioFX.click();
+  }
+  if (data.event === 'maze-moved') {
+    AudioFX.click();
+  }
+  if (data.event === 'password-cycle') {
+    // Just re-render (already done via bombState update)
   }
   if (data.event === 'strike') {
     AudioFX.strike();
@@ -1562,6 +2035,56 @@ socket.on('game-over', (data) => {
   explosionOverlay.classList.remove('active');
 
   if (data.won) {
+    // Solo progression: complete rounds at each level, then advance
+    if (isSoloMode) {
+      const totalRounds = SOLO_ROUNDS_PER_LEVEL[gameDifficulty] || 3;
+      const nextDiff = { easy: 'medium', medium: 'hard' }[gameDifficulty];
+      AudioFX.defused();
+
+      if (soloRound < totalRounds) {
+        // More rounds at this level
+        soloRound++;
+        showToast(`Round ${soloRound - 1} cleared! Round ${soloRound}/${totalRounds}...`);
+        setTimeout(() => {
+          const cs = buildSoloSettings(gameDifficulty, soloRound);
+          socket.emit('create-solo', { playerName: myName, difficulty: 'custom', customSettings: cs }, (res) => {
+            if (res.code) { roomCode = res.code; }
+          });
+        }, 2000);
+        return;
+      }
+
+      if (nextDiff) {
+        // Level complete — advance to next difficulty
+        soloRound = 1;
+        soloDifficulty = nextDiff;
+        gameDifficulty = nextDiff;
+        showToast(`${cap(gameDifficulty)} complete! Advancing to ${cap(nextDiff)}...`);
+        setTimeout(() => {
+          const cs = buildSoloSettings(nextDiff, soloRound);
+          socket.emit('create-solo', { playerName: myName, difficulty: 'custom', customSettings: cs }, (res) => {
+            if (res.code) { roomCode = res.code; }
+          });
+        }, 2500);
+        return;
+      }
+
+      // Beat all of hard — show final victory
+      showScreen('result');
+      icon.textContent = '🏆';
+      title.textContent = 'ALL CHALLENGES COMPLETE!';
+      title.className = 'result-title win';
+      document.getElementById('result-reason').textContent = 'You cleared all 8 rounds across Easy, Medium, and Hard. You\'re ready for the real thing!';
+      const scoreEl = document.getElementById('result-score');
+      scoreEl.innerHTML = '<span class="score-label">Final Score</span>' + data.score.toLocaleString();
+      scoreEl.classList.remove('hidden');
+      const mm2 = Math.floor(data.timeRemaining / 60), ss2 = data.timeRemaining % 60;
+      document.getElementById('result-stats').innerHTML = `
+        <div class="result-stat-row"><span class="stat-label">Time Remaining</span><span class="stat-value">${String(mm2).padStart(2, '0')}:${String(ss2).padStart(2, '0')}</span></div>
+        <div class="result-stat-row"><span class="stat-label">Strikes Used</span><span class="stat-value">${data.strikes} / ${data.maxStrikes}</span></div>
+        <div class="result-stat-row"><span class="stat-label">Difficulty</span><span class="stat-value">Hard (Final Round)</span></div>`;
+      return;
+    }
     showScreen('result');
     icon.textContent = '💚'; title.textContent = 'DEFUSED!'; title.className = 'result-title win';
     AudioFX.defused();
@@ -1607,13 +2130,37 @@ socket.on('game-over', (data) => {
 });
 
 document.getElementById('btn-play-again').addEventListener('click', () => {
+  if (isSoloMode) {
+    // Retry same round
+    const cs = buildSoloSettings(gameDifficulty, soloRound);
+    socket.emit('create-solo', { playerName: myName, difficulty: 'custom', customSettings: cs }, (res) => {
+      if (res.code) { roomCode = res.code; }
+    });
+    return;
+  }
   const payload = {};
   if (gameDifficulty === 'custom') { payload.difficulty = 'custom'; payload.customSettings = customSettings; }
   socket.emit('play-again', payload);
 });
-document.getElementById('btn-change-difficulty').addEventListener('click', () => socket.emit('play-again', {}));
+document.getElementById('btn-change-difficulty').addEventListener('click', () => {
+  if (isSoloMode) {
+    exitSoloMode();
+    socket.disconnect();
+    socket.connect();
+    showScreen('landing');
+    if (settings.musicVolume > 0) AudioFX.menuMusic();
+    return;
+  }
+  socket.emit('play-again', {});
+});
 
 socket.on('back-to-lobby', (state) => {
+  if (isSoloMode) {
+    exitSoloMode();
+    showScreen('landing');
+    if (settings.musicVolume > 0) AudioFX.menuMusic();
+    return;
+  }
   showScreen('lobby');
   document.getElementById('btn-ready').disabled = false;
   document.getElementById('btn-ready').textContent = 'Ready';
@@ -1646,10 +2193,15 @@ const chatInput = document.getElementById('chat-input');
 const chatCharCount = document.getElementById('chat-char-count');
 const chatNewBadge = document.getElementById('chat-new-badge');
 
+let typingTimeout = null;
 chatInput.addEventListener('input', () => {
   const rem = 200 - chatInput.value.length;
   chatCharCount.textContent = rem;
   chatCharCount.style.color = rem < 20 ? 'var(--accent-red)' : 'var(--text-muted)';
+  // Typing indicator
+  if (!typingTimeout) socket.emit('typing');
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => { typingTimeout = null; }, 1000);
 });
 document.getElementById('btn-send-chat').addEventListener('click', sendChat);
 chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
@@ -1663,7 +2215,50 @@ function sendChat() {
   chatCharCount.style.color = 'var(--text-muted)';
 }
 
-socket.on('chat-message', (msg) => { addChatMessage(msg); AudioFX.message(); });
+// ── Typing Indicator ──
+let typingIndicatorTimeout = null;
+socket.on('partner-typing', () => {
+  let el = document.getElementById('typing-indicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'typing-indicator';
+    el.className = 'typing-indicator';
+    el.textContent = 'Partner is typing...';
+    chatMessages.parentNode.insertBefore(el, chatNewBadge);
+  }
+  el.classList.remove('hidden');
+  clearTimeout(typingIndicatorTimeout);
+  typingIndicatorTimeout = setTimeout(() => el.classList.add('hidden'), 2000);
+});
+
+// ── Quick Phrases ──
+const quickPhrases = ['Wait', 'Ready', 'Go ahead', 'Read that again', 'Which wire?', 'Cut it!', 'Hold on', 'I\'m not sure'];
+const quickPhraseBar = document.createElement('div');
+quickPhraseBar.className = 'quick-phrases';
+quickPhrases.forEach(phrase => {
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-tiny quick-phrase-btn';
+  btn.textContent = phrase;
+  btn.addEventListener('click', () => {
+    socket.emit('chat-message', { text: phrase });
+    AudioFX.click();
+  });
+  quickPhraseBar.appendChild(btn);
+});
+document.querySelector('.chat-input-row').before(quickPhraseBar);
+
+// ── Tab Notification ──
+let unreadCount = 0;
+const originalTitle = document.title;
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { unreadCount = 0; document.title = originalTitle; }
+});
+
+socket.on('chat-message', (msg) => {
+  addChatMessage(msg);
+  AudioFX.message();
+  if (document.hidden) { unreadCount++; document.title = `(${unreadCount}) ${originalTitle}`; }
+});
 socket.on('message-edited', ({ messageId, newText }) => {
   const el = document.querySelector(`[data-msg-id="${messageId}"] .msg-text`);
   if (el) { el.textContent = newText; el.insertAdjacentHTML('beforeend', ' <span style="font-size:11px;color:var(--text-muted)">(edited)</span>'); }
@@ -1834,9 +2429,503 @@ document.getElementById('btn-fullscreen').addEventListener('click', toggleFullsc
 document.getElementById('btn-fullscreen-game').addEventListener('click', toggleFullscreen);
 document.addEventListener('fullscreenchange', updateFullscreenIcons);
 
+// ══════════════════════ ACHIEVEMENTS ══════════════════════
+const ACHIEVEMENTS = {
+  first_defuse: { name: 'First Defuse', desc: 'Defuse your first bomb', icon: '🏆' },
+  flawless: { name: 'Flawless', desc: 'Defuse on hard with 0 strikes', icon: '💎' },
+  speed_demon: { name: 'Speed Demon', desc: 'Defuse with 50%+ time remaining on hard', icon: '⚡' },
+  veteran: { name: 'Veteran', desc: 'Complete 10 games', icon: '🎖' },
+  elite: { name: 'Elite', desc: 'Complete 50 games', icon: '⭐' },
+  comeback: { name: 'Comeback', desc: 'Win with max strikes - 1', icon: '🔥' },
+  perfect_score: { name: 'Perfect Score', desc: 'Score over 5000', icon: '👑' },
+  all_modules: { name: 'Module Master', desc: 'Defuse a bomb with all 9 modules', icon: '🧩' },
+  solo_win: { name: 'Lone Wolf', desc: 'Defuse in solo practice', icon: '🐺' },
+  ten_wins: { name: 'Unstoppable', desc: 'Win 10 games', icon: '🚀' },
+};
+
+function loadAchievements() {
+  try { return JSON.parse(localStorage.getItem('achievements') || '{}'); } catch { return {}; }
+}
+
+function unlockAchievement(key) {
+  const unlocked = loadAchievements();
+  if (unlocked[key]) return;
+  const ach = ACHIEVEMENTS[key];
+  if (!ach) return;
+  unlocked[key] = { unlockedAt: Date.now() };
+  localStorage.setItem('achievements', JSON.stringify(unlocked));
+  showToast(`${ach.icon} Achievement: ${ach.name}!`);
+}
+
+function checkAchievements(data) {
+  const stats = loadPlayerStats();
+  if (data.won) {
+    unlockAchievement('first_defuse');
+    if (data.difficulty === 'hard' && data.strikes === 0) unlockAchievement('flawless');
+    if (data.difficulty === 'hard') {
+      const totalTime = data.difficulty === 'hard' ? 180 : 300;
+      if (data.timeRemaining > totalTime / 2) unlockAchievement('speed_demon');
+    }
+    if (data.strikes === data.maxStrikes - 1) unlockAchievement('comeback');
+    if (data.score > 5000) unlockAchievement('perfect_score');
+    if (isSoloMode) unlockAchievement('solo_win');
+    if (stats.wins >= 10) unlockAchievement('ten_wins');
+  }
+  if (stats.totalGames >= 10) unlockAchievement('veteran');
+  if (stats.totalGames >= 50) unlockAchievement('elite');
+}
+
+// ══════════════════════ PLAYER STATS ══════════════════════
+function loadPlayerStats() {
+  try { return JSON.parse(localStorage.getItem('playerStats') || '{"totalGames":0,"wins":0,"totalScore":0}'); } catch { return { totalGames: 0, wins: 0, totalScore: 0 }; }
+}
+
+function updatePlayerStats(data) {
+  const stats = loadPlayerStats();
+  stats.totalGames++;
+  if (data.won) { stats.wins++; stats.totalScore += data.score || 0; }
+  if (!stats.bestScore || (data.score || 0) > stats.bestScore) stats.bestScore = data.score || 0;
+  localStorage.setItem('playerStats', JSON.stringify(stats));
+  return stats;
+}
+
+// Hook into game-over
+socket.on('game-over', (data) => {
+  updatePlayerStats(data);
+  setTimeout(() => checkAchievements(data), 1500);
+});
+
 // ══════════════════════ UTILITIES ══════════════════════
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+// ══════════════════════ RECONNECTION ══════════════════════
+let reconnectData = null; // { roomCode, playerName }
+
+socket.on('disconnect', () => {
+  if (myRole && roomCode) {
+    reconnectData = { roomCode, playerName: myName };
+    showReconnectOverlay('Connection lost. Attempting to reconnect...');
+  }
+});
+
+socket.on('connect', () => {
+  if (reconnectData) {
+    socket.emit('reconnect-room', reconnectData, (res) => {
+      if (res && res.success) {
+        hideReconnectOverlay();
+        addSystemMessage('Reconnected to the game!');
+      } else {
+        hideReconnectOverlay();
+        reconnectData = null;
+        showToast(res?.error || 'Could not reconnect.');
+        showScreen('landing');
+      }
+    });
+  }
+});
+
+socket.on('partner-disconnected-temp', ({ holdDuration }) => {
+  addSystemMessage(`Partner disconnected. Waiting ${holdDuration / 1000}s for reconnect...`);
+  showToast('Partner disconnected — waiting for reconnect...');
+});
+
+socket.on('partner-reconnected', () => {
+  addSystemMessage('Partner reconnected!');
+  showToast('Partner reconnected!');
+});
+
+socket.on('game-resume', (data) => {
+  reconnectData = null;
+  myRole = data.role;
+  gameDifficulty = data.difficulty;
+  if (data.role === 'executor') {
+    bombState = data.bomb;
+    showScreen('game');
+    renderExecutorView();
+  } else {
+    manualData = data.manual;
+    showScreen('game');
+    renderInstructorView();
+  }
+  updateTimer(data.timer || 0, timerSpeed);
+});
+
+function showReconnectOverlay(msg) {
+  let overlay = document.getElementById('reconnect-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'reconnect-overlay';
+    overlay.className = 'reconnect-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `<div class="reconnect-content"><div class="reconnect-spinner"></div><p>${msg}</p></div>`;
+  overlay.classList.remove('hidden');
+}
+
+function hideReconnectOverlay() {
+  const overlay = document.getElementById('reconnect-overlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+// ══════════════════════ MAGNIFYING GLASS ══════════════════════
+const magnifier = document.getElementById('magnifier');
+const magnifierLens = document.getElementById('magnifier-lens');
+let magActive = false;
+let magDragging = false;
+let magOffsetX = 0, magOffsetY = 0;
+const MAG_ZOOM = 2;
+const MAG_SIZE = 260;
+
+function toggleMagnifier() {
+  magActive = !magActive;
+  magnifier.classList.toggle('hidden', !magActive);
+  if (magActive) {
+    // Place a scaled clone of the game screen inside the lens
+    magnifier.style.left = (window.innerWidth / 2 - MAG_SIZE / 2) + 'px';
+    magnifier.style.top = (window.innerHeight / 3) + 'px';
+    setupMagClone();
+    updateMagClone();
+  } else {
+    const old = magnifierLens.querySelector('.mag-clone');
+    if (old) old.remove();
+  }
+}
+
+function setupMagClone() {
+  const old = magnifierLens.querySelector('.mag-clone');
+  if (old) old.remove();
+  const gameScreen = document.getElementById('screen-game');
+  if (!gameScreen) return;
+  const clone = gameScreen.cloneNode(true);
+  clone.className = 'mag-clone';
+  clone.style.cssText = 'position:absolute;transform-origin:0 0;transform:scale('+MAG_ZOOM+');pointer-events:none;width:'+window.innerWidth+'px;height:'+window.innerHeight+'px;top:0;left:0;';
+  magnifierLens.appendChild(clone);
+}
+
+function updateMagClone() {
+  if (!magActive) return;
+  const clone = magnifierLens.querySelector('.mag-clone');
+  if (!clone) return;
+  const rect = magnifier.getBoundingClientRect();
+  const cx = rect.left + MAG_SIZE / 2;
+  const cy = rect.top + MAG_SIZE / 2;
+  const offsetX = -(cx * MAG_ZOOM) + MAG_SIZE / 2;
+  const offsetY = -(cy * MAG_ZOOM) + MAG_SIZE / 2;
+  clone.style.transform = `scale(${MAG_ZOOM}) translate(${offsetX / MAG_ZOOM}px, ${offsetY / MAG_ZOOM}px)`;
+}
+
+// Refresh clone periodically when active
+setInterval(() => { if (magActive) { setupMagClone(); updateMagClone(); } }, 2000);
+
+// Drag handlers
+magnifier.addEventListener('mousedown', (e) => {
+  magDragging = true;
+  magOffsetX = e.clientX - magnifier.getBoundingClientRect().left;
+  magOffsetY = e.clientY - magnifier.getBoundingClientRect().top;
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!magDragging) return;
+  magnifier.style.left = (e.clientX - magOffsetX) + 'px';
+  magnifier.style.top = (e.clientY - magOffsetY) + 'px';
+  updateMagClone();
+});
+
+document.addEventListener('mouseup', () => { magDragging = false; });
+
+// Touch support
+magnifier.addEventListener('touchstart', (e) => {
+  magDragging = true;
+  const t = e.touches[0];
+  magOffsetX = t.clientX - magnifier.getBoundingClientRect().left;
+  magOffsetY = t.clientY - magnifier.getBoundingClientRect().top;
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+  if (!magDragging) return;
+  const t = e.touches[0];
+  magnifier.style.left = (t.clientX - magOffsetX) + 'px';
+  magnifier.style.top = (t.clientY - magOffsetY) + 'px';
+  updateMagClone();
+}, { passive: false });
+
+document.addEventListener('touchend', () => { magDragging = false; });
+
+// Close magnifier on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && magActive) { magActive = false; magnifier.classList.add('hidden'); }
+});
+
+// ══════════════════════ TOPBAR EXIT MENU ══════════════════════
+const topbarTitle = document.getElementById('topbar-title');
+const topbarDropdown = document.getElementById('topbar-dropdown');
+
+topbarTitle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  topbarDropdown.classList.toggle('hidden');
+  AudioFX.click();
+});
+document.addEventListener('click', () => topbarDropdown.classList.add('hidden'));
+
+document.getElementById('btn-exit-game').addEventListener('click', () => {
+  topbarDropdown.classList.add('hidden');
+  exitSoloMode();
+  reconnectData = null;
+  roomCode = '';
+  myRole = null;
+  bombState = null;
+  manualData = null;
+  // Close magnifier if open
+  if (magActive) { magActive = false; magnifier.classList.add('hidden'); }
+  socket.disconnect();
+  socket.connect();
+  showScreen('landing');
+  nameInput.value = '';
+  codeInput.value = '';
+  updateLandingButtons();
+  if (settings.musicVolume > 0) AudioFX.menuMusic();
+});
+
+// ══════════════════════ UNIFIED SPOTLIGHT GUIDE ══════════════════════
+const EXECUTOR_GUIDE = [
+  { target: '#game-timer', title: 'Timer', text: 'Your countdown. Hits zero = explosion. Strikes speed it up — watch for the orange "x1.5" or "x2".' },
+  { target: '#game-strikes', title: 'Strikes', text: 'Wrong actions add strikes (✕). Too many = game over. Each strike speeds up the timer and skips time.' },
+  { target: '.module-panel', title: 'Bomb Modules', text: 'Each panel is a module to defuse. Red LED = unsolved, green = done. Click wires, buttons, keys, etc. to interact.' },
+  { target: '.chat-panel', title: 'Chat & Voice', text: 'Talk to your partner here. Use quick phrases above the input for speed, or click 🎤 Call for voice chat.' },
+  { target: '.bomb-info-plate, .device-id-plate', title: 'Bomb Info', text: 'Serial number, shape, batteries, indicators, ports. READ THESE to your Instructor — they need them to find the right manual page.' },
+];
+
+const SOLO_GUIDE = [
+  { target: '.solo-bomb-info', title: 'Bomb Info', text: 'Serial number, shape, size, batteries, indicators, and ports. You need these to look up the bomb in the <strong>Index</strong> tab and find the correct <strong>Protocol</strong>.' },
+  { target: '.module-panel', title: 'Modules', text: 'These are the modules you need to defuse. Red LED = unsolved. Click wires, buttons, keys, etc. to interact. Solve them all to win!' },
+  { target: '#game-timer', title: 'Timer', text: 'Your countdown — when it hits zero, the bomb explodes. You get extra time in practice mode.' },
+  { target: '#game-strikes', title: 'Strikes', text: 'Wrong actions add strikes (✕). Too many = game over. On Hard, strikes also speed up the timer.' },
+  { target: '.manual-tabs', title: 'Manual Tabs', text: 'The manual has all the defusal rules. Click tabs to navigate between sections.' },
+  { target: '.manual-body', switchTab: 'index', title: '① Look Up the Bomb', text: 'Start here! Match the serial, shape, size, batteries, indicators, and ports to find your bomb. The <strong>Protocol</strong> column tells you which rules to use.' },
+  { target: '.manual-body', switchTab: 'wires', title: '② Read Module Rules', text: 'Each module tab has defusal rules. For protocol-dependent modules (Wires, Button, Memory, Knob), find the section matching your Protocol. Others are the same for all protocols.' },
+  { target: '.manual-body', switchTab: 'appendix', title: '③ Appendix', text: 'Quick reference for NATO alphabet, indicator codes, and port types. Handy when you\'re stuck.' },
+];
+
+const BOOK_GUIDE = [
+  { target: '.manual-cover-header', title: 'The Defusal Manual', text: 'Your only resource. It has everything to defuse the bomb — but you can\'t see the bomb. Your partner must describe it.' },
+  { target: '.manual-tabs', title: 'Navigation Tabs', text: 'Click tabs to switch sections. Start with <strong>Index</strong> to identify the bomb. Let\'s walk through each one.' },
+  { target: '.manual-body', switchTab: 'index', title: '① Index — START HERE', text: 'This table lists every possible bomb. Ask your partner for serial, shape, size, batteries, indicators, ports. Match to find the <strong>Protocol</strong> (Alpha/Bravo/Charlie). Watch for decoys with the same serial!' },
+  { target: '.manual-body', switchTab: 'procedures', title: '② Procedures', text: 'How to communicate, what to do on strikes, and the assessment checklist. Read this once to know the process.' },
+  { target: '.manual-body', switchTab: 'sequence', title: '③ Sequence', text: 'Modules must be solved in a specific order based on battery count + serial last digit. Wrong order = strike + timer speedup. Check this BEFORE you start any module!' },
+  { target: '.manual-body', switchTab: 'wires', title: '④ Module: Wires', text: 'Each module type has its own tab with defusal rules. For <strong>protocol-dependent</strong> modules like Wires, find the section matching your bomb\'s Protocol (Alpha, Bravo, or Charlie).' },
+  { target: '.manual-body', switchTab: 'appendix', title: '⑤ Appendix', text: 'Quick reference: NATO phonetic alphabet (for spelling serials), indicator codes, port identification, and strike effects.' },
+  { target: '.manual-search', title: 'Search', text: 'Type anything to search across all tabs — serial numbers, module names, words. Fastest way to find info under pressure.' },
+];
+
+let _guideSteps = [];
+let _guideIdx = 0;
+
+function openSpotlightGuide(steps) {
+  _guideSteps = steps;
+  _guideIdx = 0;
+  document.getElementById('guide-overlay').classList.remove('hidden');
+  _renderSpotlight();
+}
+
+function _closeSpotlight() {
+  document.getElementById('guide-overlay').classList.add('hidden');
+  document.getElementById('guide-spotlight').style.opacity = '0';
+}
+
+function _renderSpotlight() {
+  // Skip missing targets
+  while (_guideIdx < _guideSteps.length && !document.querySelector(_guideSteps[_guideIdx].target)) _guideIdx++;
+  if (_guideIdx >= _guideSteps.length) { _closeSpotlight(); return; }
+
+  const step = _guideSteps[_guideIdx];
+  const total = _guideSteps.length;
+
+  // Switch manual tab if the step requests it
+  if (step.switchTab) {
+    const tabBtn = document.querySelector(`.manual-tab[data-tab="${step.switchTab}"]`);
+    if (tabBtn) {
+      currentManualTab = step.switchTab;
+      document.querySelectorAll('.manual-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentManualTab));
+      const body = document.getElementById('manual-body');
+      if (body) body.innerHTML = renderManualTab(currentManualTab);
+    }
+  }
+
+  const targetEl = document.querySelector(step.target);
+
+  document.getElementById('guide-tooltip-step').textContent = `${_guideIdx + 1} / ${total}`;
+  document.getElementById('guide-tooltip-title').textContent = step.title;
+  document.getElementById('guide-tooltip-text').innerHTML = step.text;
+  document.getElementById('guide-back').style.visibility = _guideIdx === 0 ? 'hidden' : 'visible';
+  document.getElementById('guide-next').textContent = _guideIdx === total - 1 ? 'Got it!' : 'Next';
+
+  const spotlight = document.getElementById('guide-spotlight');
+  const tooltip = document.getElementById('guide-tooltip');
+
+  if (targetEl) {
+    targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setTimeout(() => {
+      const rect = targetEl.getBoundingClientRect();
+      const pad = 8;
+      spotlight.style.left = (rect.left - pad) + 'px';
+      spotlight.style.top = (rect.top - pad) + 'px';
+      spotlight.style.width = (rect.width + pad * 2) + 'px';
+      spotlight.style.height = (rect.height + pad * 2) + 'px';
+      spotlight.style.opacity = '1';
+
+      let tTop = rect.bottom + 14;
+      let tLeft = rect.left;
+      if (tTop + 200 > window.innerHeight) tTop = rect.top - 14 - 200;
+      if (tLeft + 320 > window.innerWidth) tLeft = window.innerWidth - 340;
+      tTop = Math.max(10, Math.min(tTop, window.innerHeight - 220));
+      tLeft = Math.max(10, tLeft);
+      tooltip.style.top = tTop + 'px';
+      tooltip.style.left = tLeft + 'px';
+      tooltip.style.transform = '';
+    }, 120);
+  }
+}
+
+document.getElementById('guide-next').addEventListener('click', () => {
+  AudioFX.click();
+  if (_guideIdx < _guideSteps.length - 1) { _guideIdx++; _renderSpotlight(); }
+  else _closeSpotlight();
+});
+document.getElementById('guide-back').addEventListener('click', () => {
+  AudioFX.click();
+  if (_guideIdx > 0) { _guideIdx--; _renderSpotlight(); }
+});
+document.getElementById('guide-skip').addEventListener('click', () => { AudioFX.click(); _closeSpotlight(); });
+document.getElementById('guide-dimmer').addEventListener('click', _closeSpotlight);
+
+// Topbar button → context-aware guide
+document.getElementById('btn-guide-ingame').addEventListener('click', () => {
+  if (isSoloMode) openSpotlightGuide(SOLO_GUIDE);
+  else openSpotlightGuide(EXECUTOR_GUIDE);
+  AudioFX.click();
+});
+
+// Book guide is triggered from the 📋 Guide button inside the manual (added in renderInstructorView)
+function startBookGuide() { openSpotlightGuide(BOOK_GUIDE); }
+
+// ══════════════════════ INTERACTIVE TUTORIAL ══════════════════════
+const TUTORIAL_STEPS = [
+  {
+    title: 'Welcome, Agent!',
+    text: 'Talk 2 Defuse is a cooperative bomb defusal game for 2 players. One sees the bomb, the other has the manual. You must communicate to defuse it before time runs out!',
+    tip: 'You can also play Solo Practice mode to learn on your own.',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="36" stroke="#d29922" stroke-width="3" fill="rgba(210,153,34,0.1)"/><circle cx="40" cy="40" r="20" stroke="#f0883e" stroke-width="2" fill="none"/><circle cx="40" cy="40" r="6" fill="#d29922"/><line x1="40" y1="20" x2="40" y2="34" stroke="#f0883e" stroke-width="3" stroke-linecap="round"/></svg>`,
+  },
+  {
+    title: 'Two Roles',
+    text: '<strong>Executor</strong> — Sees the bomb. Describes what\'s on it and performs actions (cutting wires, pressing buttons, etc.).<br><br><strong>Instructor</strong> — Has the defusal manual. Looks up the bomb in the index and reads the correct instructions.',
+    tip: 'Neither player can see what the other sees. Communication is everything!',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="6" y="20" width="28" height="40" rx="4" stroke="#f0883e" stroke-width="2.5" fill="rgba(240,136,62,0.1)"/><text x="20" y="45" text-anchor="middle" font-size="20" fill="#f0883e">💣</text><rect x="46" y="20" width="28" height="40" rx="4" stroke="#58a6ff" stroke-width="2.5" fill="rgba(88,166,255,0.1)"/><text x="60" y="45" text-anchor="middle" font-size="20" fill="#58a6ff">📖</text><path d="M34 40 L46 40" stroke="#3fb950" stroke-width="2" stroke-dasharray="3 2"/></svg>`,
+  },
+  {
+    title: 'Step 1: Describe the Bomb',
+    text: 'The <strong>Executor</strong> starts by describing the bomb to the Instructor via chat (or voice):<br>• Serial number<br>• Shape &amp; size<br>• Number of batteries<br>• Indicator labels (which are lit)<br>• Port types',
+    tip: 'The serial number is the most important — the Instructor needs it to find the bomb in the manual\'s Index tab.',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="10" y="15" width="60" height="50" rx="6" stroke="#3a3d42" stroke-width="2.5" fill="rgba(30,33,38,0.6)"/><text x="40" y="35" text-anchor="middle" font-size="9" fill="#58a6ff" font-family="monospace" font-weight="bold">SN: AB3CD7</text><rect x="18" y="42" width="12" height="8" rx="1" fill="rgba(210,153,34,0.3)" stroke="#d29922" stroke-width="1"/><rect x="34" y="42" width="12" height="8" rx="1" fill="rgba(210,153,34,0.3)" stroke="#d29922" stroke-width="1"/><circle cx="60" cy="46" r="4" fill="rgba(63,185,80,0.4)" stroke="#3fb950" stroke-width="1"/><text x="60" y="48" text-anchor="middle" font-size="5" fill="#3fb950">FRK</text></svg>`,
+  },
+  {
+    title: 'Step 2: Find the Protocol',
+    text: 'The <strong>Instructor</strong> opens the <em>Index</em> tab in the manual and matches the bomb\'s details. This reveals the <strong>Protocol</strong> (Alpha, Bravo, or Charlie) — which determines which defusal rules to follow.',
+    tip: 'Beware of decoy entries! Cross-reference serial, shape, size, and batteries to find the correct match.',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="12" y="10" width="56" height="60" rx="4" fill="rgba(244,237,216,0.1)" stroke="#8b7d3c" stroke-width="2"/><line x1="20" y1="24" x2="60" y2="24" stroke="#6b5d44" stroke-width="1"/><line x1="20" y1="34" x2="60" y2="34" stroke="#6b5d44" stroke-width="1"/><line x1="20" y1="44" x2="60" y2="44" stroke="#6b5d44" stroke-width="1"/><rect x="22" y="50" width="18" height="10" rx="2" fill="rgba(220,53,69,0.2)" stroke="#dc3545" stroke-width="1.5"/><text x="31" y="58" text-anchor="middle" font-size="7" fill="#dc3545" font-weight="bold">ALPHA</text></svg>`,
+  },
+  {
+    title: 'Step 3: Solve Modules',
+    text: 'Each bomb has modules that must be defused. The Instructor reads the rules for each module (using the correct Protocol), and the Executor performs the action.<br><br><strong>9 module types:</strong> Wires, Button, Keypad, Simon Says, Morse Code, Memory, Maze, Password, Knob',
+    tip: 'Modules may need to be solved in a specific order — check the Sequence tab!',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="4" y="4" width="34" height="34" rx="4" stroke="#dc3545" stroke-width="2" fill="rgba(220,53,69,0.08)"/><line x1="12" y1="14" x2="30" y2="14" stroke="#dc3545" stroke-width="2.5" stroke-linecap="round"/><line x1="12" y1="21" x2="30" y2="21" stroke="#0d6efd" stroke-width="2.5" stroke-linecap="round"/><line x1="12" y1="28" x2="30" y2="28" stroke="#ffc107" stroke-width="2.5" stroke-linecap="round"/><rect x="42" y="4" width="34" height="34" rx="4" stroke="#58a6ff" stroke-width="2" fill="rgba(88,166,255,0.08)"/><circle cx="59" cy="21" r="10" stroke="#58a6ff" stroke-width="2"/><rect x="4" y="42" width="34" height="34" rx="4" stroke="#bc8cff" stroke-width="2" fill="rgba(188,140,255,0.08)"/><rect x="12" y="50" width="10" height="10" rx="2" stroke="#bc8cff" stroke-width="1.5"/><rect x="24" y="50" width="10" height="10" rx="2" stroke="#bc8cff" stroke-width="1.5"/><rect x="42" y="42" width="34" height="34" rx="4" stroke="#3fb950" stroke-width="2" fill="rgba(63,185,80,0.08)"/><text x="59" y="63" text-anchor="middle" font-size="16" fill="#3fb950" font-weight="bold">3</text></svg>`,
+  },
+  {
+    title: 'Strikes & Timer',
+    text: 'Every wrong action causes a <strong>strike</strong>. Too many strikes and the bomb explodes!<br><br>Strikes also <strong>speed up the timer</strong> — first strike makes it 1.5x faster, second makes it 2x. Time is also skipped on each strike.',
+    tip: 'Stay calm and double-check instructions before acting. One wrong move can cascade!',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><text x="15" y="35" font-size="24" fill="#f85149">✕</text><text x="35" y="35" font-size="24" fill="#f85149">✕</text><text x="55" y="35" font-size="16" fill="#3a3d42">○</text><circle cx="40" cy="58" r="14" stroke="#d29922" stroke-width="2.5" fill="none"/><path d="M40 48v10l6 4" stroke="#f0883e" stroke-width="2" stroke-linecap="round" fill="none"/></svg>`,
+  },
+  {
+    title: 'Communication Tips',
+    text: 'Use the <strong>chat panel</strong> to talk, or click <strong>🎤 Call</strong> for voice chat.<br><br><strong>Quick phrases</strong> are above the chat input for common callouts like "Wait", "Go ahead", and "Read that again".<br><br>Use NATO phonetics for letters: Alpha, Bravo, Charlie...',
+    tip: 'Voice chat supports Push-to-Talk (hold Spacebar) or Open Mic mode.',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="12" width="50" height="36" rx="6" stroke="#58a6ff" stroke-width="2" fill="rgba(88,166,255,0.08)"/><rect x="16" y="22" width="26" height="4" rx="2" fill="rgba(88,166,255,0.3)"/><rect x="16" y="30" width="18" height="4" rx="2" fill="rgba(88,166,255,0.2)"/><path d="M58 36 L68 42 L58 48" fill="rgba(88,166,255,0.15)" stroke="#58a6ff" stroke-width="1.5"/><circle cx="64" cy="62" r="8" stroke="#3fb950" stroke-width="2" fill="rgba(63,185,80,0.1)"/><line x1="64" y1="56" x2="64" y2="64" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round"/><path d="M58 64 Q58 70 64 70 Q70 70 70 64" stroke="#3fb950" stroke-width="1.5" fill="none"/></svg>`,
+  },
+  {
+    title: 'You\'re Ready!',
+    text: 'Enter a callsign and click <strong>DEPLOY</strong> to create a room, then share the code with your partner. Or click <strong>Solo Practice</strong> to try it alone first.<br><br>Good luck, agent. The clock is ticking.',
+    tip: '',
+    icon: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="30" stroke="#3fb950" stroke-width="3" fill="rgba(63,185,80,0.1)"/><path d="M26 40 L36 50 L56 30" stroke="#3fb950" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  },
+];
+
+let tutorialStep = 0;
+
+function showTutorial() {
+  tutorialStep = 0;
+  document.getElementById('tutorial-overlay').classList.remove('hidden');
+  renderTutorialStep();
+}
+
+function closeTutorial() {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
+  localStorage.setItem('tutorialSeen', 'true');
+}
+
+function renderTutorialStep() {
+  const step = TUTORIAL_STEPS[tutorialStep];
+  const total = TUTORIAL_STEPS.length;
+  document.getElementById('tutorial-step-counter').textContent = `Step ${tutorialStep + 1} of ${total}`;
+  document.getElementById('tutorial-progress-bar').style.width = `${((tutorialStep + 1) / total) * 100}%`;
+  document.getElementById('tutorial-illustration').innerHTML = step.icon;
+  document.getElementById('tutorial-title').textContent = step.title;
+  document.getElementById('tutorial-text').innerHTML = step.text;
+  const tipEl = document.getElementById('tutorial-tip');
+  if (step.tip) { tipEl.innerHTML = `<strong>Tip:</strong> ${step.tip}`; tipEl.style.display = ''; }
+  else { tipEl.style.display = 'none'; }
+  document.getElementById('tutorial-back').style.visibility = tutorialStep === 0 ? 'hidden' : 'visible';
+  document.getElementById('tutorial-next').textContent = tutorialStep === total - 1 ? 'Start Playing!' : 'Next';
+}
+
+document.getElementById('tutorial-next').addEventListener('click', () => {
+  if (tutorialStep < TUTORIAL_STEPS.length - 1) { tutorialStep++; renderTutorialStep(); AudioFX.click(); }
+  else { closeTutorial(); AudioFX.click(); }
+});
+document.getElementById('tutorial-back').addEventListener('click', () => {
+  if (tutorialStep > 0) { tutorialStep--; renderTutorialStep(); AudioFX.click(); }
+});
+document.getElementById('tutorial-skip').addEventListener('click', () => { closeTutorial(); AudioFX.click(); });
+document.getElementById('btn-tutorial').addEventListener('click', () => { showTutorial(); AudioFX.click(); });
+
+// Auto-show tutorial on first visit
+if (!localStorage.getItem('tutorialSeen')) {
+  setTimeout(showTutorial, 800);
+}
+
+// ══════════════════════ VOICE CHAT ══════════════════════
+VoiceChat.init(socket);
+
+document.getElementById('voice-mic-btn').addEventListener('click', () => {
+  if (VoiceChat.hasStream) VoiceChat.hangup();
+  else VoiceChat.startCall();
+});
+document.getElementById('voice-mute-btn').addEventListener('click', () => VoiceChat.toggleMute());
+document.getElementById('voice-mode-btn').addEventListener('click', () => {
+  VoiceChat.setMode(VoiceChat.mode === 'open-mic' ? 'push-to-talk' : 'open-mic');
+});
+// Push-to-talk: spacebar (only when chat input not focused)
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && document.activeElement !== document.getElementById('chat-input')) {
+    VoiceChat.setPTT(true);
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') VoiceChat.setPTT(false);
+});
 
 // ══════════════════════ INIT ══════════════════════
 applySettings();

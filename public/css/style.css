@@ -1185,7 +1185,6 @@ input[type="text"].input-error {
 /* ── Module Grid ── */
 .bomb-modules-grid {
   display: grid; grid-template-columns: 1fr 1fr;
-  overflow: visible;
   gap: 16px; padding: 16px 22px;
   position: relative; z-index: 1;
 }
@@ -1521,7 +1520,7 @@ input[type="text"].input-error {
 
 /* ══════════════════════ INSTRUCTOR MANUAL — BOOK DESIGN ══════════════════════ */
 .manual-container {
-  width: 100%; max-width: 740px;
+  width: 100%; max-width: 900px;
   position: relative;
   display: flex; flex-direction: column;
   min-height: 0; max-height: 100%;
@@ -1575,6 +1574,7 @@ input[type="text"].input-error {
 /* ── Tabs (binder dividers) ── */
 .manual-tabs {
   display: flex; flex-wrap: nowrap; gap: 2px; padding: 4px 24px 0; overflow-x: auto;
+  scrollbar-width: thin; scrollbar-color: #5a5d44 transparent;
   background: linear-gradient(135deg, #1b2a1b, #243524);
   border-left: 3px solid #8b7d3c;
   border-right: 3px solid #8b7d3c;
@@ -2798,10 +2798,7 @@ input[type="text"].input-error {
   margin-bottom: -2px;
 }
 .bomb-shape-briefcase .bomb-modules-grid {
-  grid-template-columns: 1fr 1fr 1fr;
-}
-.bomb-shape-briefcase .bomb-modules-grid > .module-panel:last-child:nth-child(odd) {
-  max-width: 100%;
+  grid-template-columns: 1fr 1fr;
 }
 
 /* Barrel — metal banding, industrial drum feel */

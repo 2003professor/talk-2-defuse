@@ -369,9 +369,10 @@ function renderSoloView() {
 
   document.querySelectorAll('.manual-tab').forEach(tab => {
     tab.addEventListener('click', () => {
+      const prevTab = currentManualTab;
       currentManualTab = tab.dataset.tab;
       document.querySelectorAll('.manual-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentManualTab));
-      flipManualPage(currentManualTab);
+      flipManualPage(currentManualTab, prevTab);
       AudioFX.click();
     });
   });
@@ -1365,9 +1366,10 @@ function renderInstructorView() {
 
   document.querySelectorAll('.manual-tab').forEach(tab => {
     tab.addEventListener('click', () => {
+      const prevTab = currentManualTab;
       currentManualTab = tab.dataset.tab;
       document.querySelectorAll('.manual-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentManualTab));
-      flipManualPage(currentManualTab);
+      flipManualPage(currentManualTab, prevTab);
       AudioFX.click();
     });
   });
@@ -2685,7 +2687,8 @@ let magDragging = false;
 let magOffsetX = 0, magOffsetY = 0;
 const MAG_SIZE = 260;
 
-const MAG_ZOOM = 1.8;
+const MAG_ZOOM = 2;
+let magRafId = null;
 
 function toggleMagnifier() {
   magActive = !magActive;
@@ -2693,37 +2696,73 @@ function toggleMagnifier() {
   if (magActive) {
     magnifier.style.left = (window.innerWidth / 2 - MAG_SIZE / 2) + 'px';
     magnifier.style.top = (window.innerHeight / 3) + 'px';
-    refreshMagLens();
+    magRafId = requestAnimationFrame(magLoop);
   } else {
-    const old = magnifierLens.querySelector('.mag-clone');
-    if (old) old.remove();
+    if (magRafId) { cancelAnimationFrame(magRafId); magRafId = null; }
+    magnifierLens.style.backgroundImage = '';
+    magnifierLens.style.backgroundColor = '';
   }
 }
 
-function refreshMagLens() {
+function magLoop() {
   if (!magActive) return;
-  const old = magnifierLens.querySelector('.mag-clone');
-  if (old) old.remove();
-  // Clone the entire game screen for full coverage
-  const gameScreen = document.getElementById('screen-game');
-  if (!gameScreen) return;
-  const clone = gameScreen.cloneNode(true);
-  clone.className = 'mag-clone';
-  clone.style.cssText = `position:absolute;transform-origin:0 0;pointer-events:none;width:${window.innerWidth}px;height:${window.innerHeight}px;overflow:visible;display:flex;`;
-  magnifierLens.appendChild(clone);
-  updateMagPosition();
+  updateMagZoom();
+  magRafId = requestAnimationFrame(magLoop);
 }
 
-function updateMagPosition() {
-  if (!magActive) return;
-  const clone = magnifierLens.querySelector('.mag-clone');
-  if (!clone) return;
+function updateMagZoom() {
   const magRect = magnifier.getBoundingClientRect();
   const cx = magRect.left + MAG_SIZE / 2;
   const cy = magRect.top + MAG_SIZE / 2;
-  const tx = (-cx * MAG_ZOOM + MAG_SIZE / 2) / MAG_ZOOM;
-  const ty = (-cy * MAG_ZOOM + MAG_SIZE / 2) / MAG_ZOOM;
-  clone.style.transform = `scale(${MAG_ZOOM}) translate(${tx}px, ${ty}px)`;
+
+  // Remove old zoom
+  const existing = magnifierLens.querySelector('.mag-zoom');
+  if (existing) existing.remove();
+
+  // Always use the game-main as the source — covers bomb, manual, everything
+  const gameMain = document.querySelector('.game-main');
+  if (!gameMain) return;
+  const gmRect = gameMain.getBoundingClientRect();
+
+  const relX = cx - gmRect.left;
+  const relY = cy - gmRect.top;
+
+  const zoomDiv = document.createElement('div');
+  zoomDiv.className = 'mag-zoom';
+  zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;';
+
+  const clone = gameMain.cloneNode(true);
+  clone.style.cssText = `
+    position: absolute;
+    width: ${gmRect.width}px;
+    height: ${gmRect.height}px;
+    pointer-events: none;
+    transform-origin: 0 0;
+    transform: scale(${MAG_ZOOM});
+    left: ${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px;
+    top: ${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px;
+    overflow: visible;
+  `;
+
+  // Fix scroll offsets in all scrollable children
+  const origEls = gameMain.querySelectorAll('*');
+  const cloneEls = clone.querySelectorAll('*');
+  for (let i = 0; i < origEls.length; i++) {
+    if (origEls[i].scrollTop > 0 || origEls[i].scrollLeft > 0) {
+      const ce = cloneEls[i];
+      if (ce) {
+        ce.style.overflow = 'visible';
+        // Wrap children in an offset container
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `position:relative;top:${-origEls[i].scrollTop}px;left:${-origEls[i].scrollLeft}px;`;
+        while (ce.firstChild) wrapper.appendChild(ce.firstChild);
+        ce.appendChild(wrapper);
+      }
+    }
+  }
+
+  zoomDiv.appendChild(clone);
+  magnifierLens.appendChild(zoomDiv);
 }
 
 // Drag handlers
@@ -2741,7 +2780,7 @@ document.addEventListener('mousemove', (e) => {
   updateMagPosition();
 });
 
-document.addEventListener('mouseup', () => { if (magDragging) { magDragging = false; refreshMagLens(); } });
+document.addEventListener('mouseup', () => { magDragging = false; });
 
 // Touch support
 magnifier.addEventListener('touchstart', (e) => {
@@ -2760,26 +2799,39 @@ document.addEventListener('touchmove', (e) => {
   updateMagPosition();
 }, { passive: false });
 
-document.addEventListener('touchend', () => { if (magDragging) { magDragging = false; refreshMagLens(); } });
+document.addEventListener('touchend', () => { magDragging = false; });
 
 // Close magnifier on Escape
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && magActive) { magActive = false; magnifier.classList.add('hidden'); }
+  if (e.key === 'Escape' && magActive) { magActive = false; magnifier.classList.add('hidden'); if (magRafId) { cancelAnimationFrame(magRafId); magRafId = null; } }
 });
 
 // ══════════════════════ PAGE FLIP HELPER ══════════════════════
-function flipManualPage(newTab) {
+let isFlipping = false;
+const TAB_ORDER = ['index','overview','procedures','sequence','wires','button','keypad','simon','morse','memory','maze','password','knob','appendix'];
+
+function flipManualPage(newTab, prevTab) {
   const body = document.getElementById('manual-body');
-  if (!body) return;
-  body.classList.add('page-flip-out');
+  if (!body || isFlipping) return;
+  isFlipping = true;
   AudioFX.pageFlip();
+
+  // Determine direction based on previous tab position vs new
+  const oldIdx = TAB_ORDER.indexOf(prevTab || 'index');
+  const newIdx = TAB_ORDER.indexOf(newTab);
+  const goingForward = newIdx > oldIdx;
+
+  const outClass = goingForward ? 'page-out-left' : 'page-out-right';
+  const inClass = goingForward ? 'page-in-right' : 'page-in-left';
+
+  body.classList.add(outClass);
   setTimeout(() => {
+    body.scrollTop = 0;
     body.innerHTML = renderManualTab(newTab);
-    body.classList.remove('page-flip-out');
-    body.classList.add('page-flip-in');
-    setTimeout(() => body.classList.remove('page-flip-in'), 300);
-    if (magActive) setTimeout(refreshMagLens, 50);
-  }, 320);
+    body.classList.remove(outClass);
+    body.classList.add(inClass);
+    setTimeout(() => { body.classList.remove(inClass); isFlipping = false; }, 350);
+  }, 230);
 }
 
 // ══════════════════════ FAUX-3D: MOUSE TRACKING & EFFECTS ══════════════════════

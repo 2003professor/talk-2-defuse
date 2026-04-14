@@ -186,43 +186,77 @@ const AudioFX = (() => {
       });
     },
 
-    // Paper page flip — whooshy rustle
+    // Paper page flip — realistic swoosh + rustle + settle
     pageFlip() {
       play((c, dest) => {
         const t = c.currentTime;
-        // Noise burst shaped like a page swoosh
-        const bufLen = c.sampleRate * 0.25;
-        const buf = c.createBuffer(1, bufLen, c.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < bufLen; i++) {
-          const env = Math.sin((i / bufLen) * Math.PI); // bell curve
-          data[i] = (Math.random() * 2 - 1) * env;
+
+        // Layer 1: Initial lift — quick high-freq burst (paper peeling off)
+        const liftLen = c.sampleRate * 0.08;
+        const liftBuf = c.createBuffer(1, liftLen, c.sampleRate);
+        const liftData = liftBuf.getChannelData(0);
+        for (let i = 0; i < liftLen; i++) {
+          liftData[i] = (Math.random() * 2 - 1) * (1 - i / liftLen) * 0.6;
         }
-        const noise = c.createBufferSource();
-        noise.buffer = buf;
-        // Bandpass filter — papery frequency range
-        const bp = c.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.setValueAtTime(3000, t);
-        bp.frequency.exponentialRampToValueAtTime(1500, t + 0.15);
-        bp.Q.value = 0.8;
-        // Gain
-        const g = c.createGain();
-        g.gain.setValueAtTime(0.12, t);
-        g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-        noise.connect(bp).connect(g).connect(dest);
-        noise.start(t);
-        noise.stop(t + 0.25);
-        // Subtle low thump for the page settling
-        const thump = c.createOscillator();
-        const tg = c.createGain();
-        thump.type = 'sine';
-        thump.frequency.value = 150;
-        tg.gain.setValueAtTime(0.06, t + 0.12);
-        tg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-        thump.connect(tg).connect(dest);
-        thump.start(t + 0.12);
-        thump.stop(t + 0.25);
+        const lift = c.createBufferSource();
+        lift.buffer = liftBuf;
+        const liftF = c.createBiquadFilter();
+        liftF.type = 'highpass'; liftF.frequency.value = 4000;
+        const liftG = c.createGain();
+        liftG.gain.setValueAtTime(0.08, t);
+        lift.connect(liftF).connect(liftG).connect(dest);
+        lift.start(t); lift.stop(t + 0.08);
+
+        // Layer 2: Main swoosh — shaped noise through bandpass
+        const swooshLen = c.sampleRate * 0.3;
+        const swooshBuf = c.createBuffer(1, swooshLen, c.sampleRate);
+        const swooshData = swooshBuf.getChannelData(0);
+        for (let i = 0; i < swooshLen; i++) {
+          const pos = i / swooshLen;
+          // Asymmetric envelope: fast attack, gradual decay
+          const env = pos < 0.2 ? pos / 0.2 : Math.pow(1 - (pos - 0.2) / 0.8, 1.5);
+          swooshData[i] = (Math.random() * 2 - 1) * env;
+        }
+        const swoosh = c.createBufferSource();
+        swoosh.buffer = swooshBuf;
+        const swBP = c.createBiquadFilter();
+        swBP.type = 'bandpass';
+        swBP.frequency.setValueAtTime(4500, t + 0.02);
+        swBP.frequency.exponentialRampToValueAtTime(1200, t + 0.25);
+        swBP.Q.value = 0.6;
+        const swG = c.createGain();
+        swG.gain.setValueAtTime(0.14, t + 0.02);
+        swG.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        swoosh.connect(swBP).connect(swG).connect(dest);
+        swoosh.start(t + 0.02); swoosh.stop(t + 0.32);
+
+        // Layer 3: Settle thud — page lands flat
+        const thud = c.createOscillator();
+        const thudG = c.createGain();
+        thud.type = 'sine';
+        thud.frequency.setValueAtTime(120, t + 0.22);
+        thud.frequency.exponentialRampToValueAtTime(60, t + 0.35);
+        thudG.gain.setValueAtTime(0.05, t + 0.22);
+        thudG.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        thud.connect(thudG).connect(dest);
+        thud.start(t + 0.22); thud.stop(t + 0.36);
+
+        // Layer 4: Trailing rustle — tiny noise tail
+        const rustleLen = c.sampleRate * 0.12;
+        const rustleBuf = c.createBuffer(1, rustleLen, c.sampleRate);
+        const rustleData = rustleBuf.getChannelData(0);
+        for (let i = 0; i < rustleLen; i++) {
+          rustleData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rustleLen, 2);
+        }
+        const rustle = c.createBufferSource();
+        rustle.buffer = rustleBuf;
+        const rLP = c.createBiquadFilter();
+        rLP.type = 'lowpass'; rLP.frequency.value = 2000;
+        const rG = c.createGain();
+        rG.gain.setValueAtTime(0.04, t + 0.25);
+        rG.gain.exponentialRampToValueAtTime(0.001, t + 0.37);
+        rustle.connect(rLP).connect(rG).connect(dest);
+        rustle.start(t + 0.25); rustle.stop(t + 0.38);
       });
     },
 

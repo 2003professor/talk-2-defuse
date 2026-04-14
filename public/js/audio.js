@@ -186,6 +186,46 @@ const AudioFX = (() => {
       });
     },
 
+    // Paper page flip — whooshy rustle
+    pageFlip() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        // Noise burst shaped like a page swoosh
+        const bufLen = c.sampleRate * 0.25;
+        const buf = c.createBuffer(1, bufLen, c.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) {
+          const env = Math.sin((i / bufLen) * Math.PI); // bell curve
+          data[i] = (Math.random() * 2 - 1) * env;
+        }
+        const noise = c.createBufferSource();
+        noise.buffer = buf;
+        // Bandpass filter — papery frequency range
+        const bp = c.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(3000, t);
+        bp.frequency.exponentialRampToValueAtTime(1500, t + 0.15);
+        bp.Q.value = 0.8;
+        // Gain
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.12, t);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+        noise.connect(bp).connect(g).connect(dest);
+        noise.start(t);
+        noise.stop(t + 0.25);
+        // Subtle low thump for the page settling
+        const thump = c.createOscillator();
+        const tg = c.createGain();
+        thump.type = 'sine';
+        thump.frequency.value = 150;
+        tg.gain.setValueAtTime(0.06, t + 0.12);
+        tg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        thump.connect(tg).connect(dest);
+        thump.start(t + 0.12);
+        thump.stop(t + 0.25);
+      });
+    },
+
     // Fuse sizzle — short "tsssss" sound (filtered noise + high sine crackle)
     fuseLit() {
       play((c, dest) => {

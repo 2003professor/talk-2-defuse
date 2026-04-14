@@ -99,9 +99,11 @@ const screens = {
   game: document.getElementById('screen-game'),
   result: document.getElementById('screen-result'),
 };
+let _currentScreen = 'landing';
 function showScreen(name) {
-  Object.values(screens).forEach(s => s.classList.remove('active'));
-  screens[name].classList.add('active');
+  const prev = _currentScreen;
+  _currentScreen = name;
+
   // Stop menu music when leaving landing/lobby
   if (name !== 'landing' && name !== 'lobby') AudioFX.stopMenuMusic();
   // Show room code in game topbar
@@ -114,6 +116,26 @@ function showScreen(name) {
     magActive = false;
     const mag = document.getElementById('magnifier');
     if (mag) mag.classList.add('hidden');
+  }
+  // Timer urgency cleanup
+  const gm = document.querySelector('.game-main');
+  if (gm && name !== 'game') { gm.classList.remove('timer-urgent', 'timer-critical'); }
+
+  // Cinematic transition
+  const prevScreen = screens[prev];
+  const nextScreen = screens[name];
+  if (prevScreen && nextScreen && prevScreen !== nextScreen) {
+    prevScreen.classList.add('screen-exit');
+    nextScreen.classList.remove('active');
+    setTimeout(() => {
+      prevScreen.classList.remove('active', 'screen-exit');
+      nextScreen.classList.add('active', 'screen-enter');
+      setTimeout(() => nextScreen.classList.remove('screen-enter'), 400);
+    }, 200);
+  } else {
+    Object.values(screens).forEach(s => s.classList.remove('active', 'screen-exit', 'screen-enter'));
+    nextScreen.classList.add('active', 'screen-enter');
+    setTimeout(() => nextScreen.classList.remove('screen-enter'), 400);
   }
 }
 
@@ -221,7 +243,7 @@ function buildSoloSettings(difficulty, round) {
   const extraTime = Math.max(0, modules.length - 1) * 30;
   return {
     timer: baseTime + extraTime,
-    maxStrikes: difficulty === 'hard' ? 2 : 3,
+    maxStrikes: 3,
     wireCount: 3 + Math.floor(Math.random() * 3), // 3-5
     modules,
     sequenceEnforcement: false,
@@ -269,6 +291,7 @@ document.getElementById('btn-solo').addEventListener('click', () => {
 });
 
 socket.on('solo-start', (data) => {
+  resetMagCracks();
   isSoloMode = true;
   myRole = 'solo';
   bombState = data.bomb;
@@ -333,7 +356,7 @@ function renderSoloView() {
     }
   });
   html += '</div>';
-  html += '<div class="manual-search"><button id="btn-magnifier-solo" class="btn btn-tiny manual-guide-btn" title="Magnifying Glass">🔍</button></div>';
+  html += '<div class="manual-search"></div>';
   html += `<div class="manual-body" id="manual-body">${renderManualTab(currentManualTab)}</div>`;
   html += '</div></div>';
 
@@ -348,7 +371,7 @@ function renderSoloView() {
     tab.addEventListener('click', () => {
       currentManualTab = tab.dataset.tab;
       document.querySelectorAll('.manual-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentManualTab));
-      document.getElementById('manual-body').innerHTML = renderManualTab(currentManualTab);
+      flipManualPage(currentManualTab);
       AudioFX.click();
     });
   });
@@ -715,6 +738,7 @@ socket.on('start-countdown', () => {
 // ══════════════════════ GAME START ══════════════════════
 socket.on('game-start', (data) => {
   showScreen('game');
+  resetMagCracks();
   myRole = data.role;
   gameDifficulty = data.difficulty || 'easy';
   timerSpeed = 1;
@@ -888,6 +912,8 @@ function renderExecutorView() {
   html += '</div></div>';
   content.innerHTML = html;
   attachExecutorListeners();
+  // Faux-3D: animate modules in
+  animateModuleEntrance();
 }
 
 function renderModule(mod, mi) {
@@ -1328,7 +1354,7 @@ function renderInstructorView() {
     html += `<button class="manual-tab${currentManualTab === tab ? ' active' : ''}" data-tab="${tab}">${label}</button>`;
   });
   html += '</div>';
-  html += '<div class="manual-search"><input type="text" id="manual-search-input" placeholder="Search manual..." autocomplete="off"><button id="btn-magnifier" class="btn btn-tiny manual-guide-btn" title="Magnifying Glass">🔍</button><button id="btn-book-guide" class="btn btn-tiny manual-guide-btn" title="Manual Guide">📋 Guide</button></div>';
+  html += '<div class="manual-search"><input type="text" id="manual-search-input" placeholder="Search manual..." autocomplete="off"><button id="btn-book-guide" class="btn btn-tiny manual-guide-btn" title="Manual Guide">📋 Guide</button></div>';
   html += `<div class="manual-body" id="manual-body">${renderManualTab(currentManualTab)}</div>`;
   html += '</div>';
   content.innerHTML = html;
@@ -1341,7 +1367,7 @@ function renderInstructorView() {
     tab.addEventListener('click', () => {
       currentManualTab = tab.dataset.tab;
       document.querySelectorAll('.manual-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentManualTab));
-      document.getElementById('manual-body').innerHTML = renderManualTab(currentManualTab);
+      flipManualPage(currentManualTab);
       AudioFX.click();
     });
   });
@@ -1958,6 +1984,7 @@ socket.on('game-update', (data) => {
     AudioFX.success();
     showToast(`${cap(data.moduleType)} module defused!`);
     addSystemMessage(`Module solved: ${cap(data.moduleType)}`);
+    flashLighting('green', 500);
   }
   if (data.event === 'simon-stage-complete') {
     showToast(`Simon Says: Stage ${data.stage} complete!`);
@@ -1979,6 +2006,11 @@ socket.on('game-update', (data) => {
   if (data.event === 'strike') {
     AudioFX.strike();
     showStrikeFlash();
+    flashLighting('red', 500);
+    addMagCrack(data.strikes);
+    // Faux-3D bomb shake
+    const bombEl = document.querySelector('.bomb-container');
+    if (bombEl) { bombEl.classList.add('bomb-shake'); setTimeout(() => bombEl.classList.remove('bomb-shake'), 500); }
     updateStrikes(data.strikes, data.maxStrikes);
     showToast(data.message);
     addSystemMessage(data.message);
@@ -2009,6 +2041,12 @@ function updateTimer(s, speed) {
   if (speed > 1) el.classList.add('speed-up');
   if (s <= 10) el.classList.add('danger');
   else if (s <= 30) el.classList.add('warning');
+  // Faux-3D timer urgency atmosphere
+  const gm = document.querySelector('.game-main');
+  if (gm) {
+    gm.classList.toggle('timer-urgent', s <= 30 && s > 10);
+    gm.classList.toggle('timer-critical', s <= 10);
+  }
 }
 
 function updateStrikes(strikes, max) {
@@ -2089,27 +2127,98 @@ socket.on('game-over', (data) => {
     icon.textContent = '💚'; title.textContent = 'DEFUSED!'; title.className = 'result-title win';
     AudioFX.defused();
   } else {
-    // Explosion sequence: flash + shake + boom, then show result
+    // ── DRAMATIC EXPLOSION SEQUENCE ──
     icon.textContent = '💥'; title.textContent = 'BOOM!'; title.className = 'result-title lose';
     AudioFX.explosion();
+    setTimeout(() => AudioFX.explosion(), 300);
+    shatterMagLens();
 
-    // Show explosion overlay on game screen first
-    explosionOverlay.classList.remove('hidden');
-    // Force reflow to restart animations
-    void explosionOverlay.offsetWidth;
-    if (settings.screenShake) explosionOverlay.classList.add('active');
+    // Create dramatic explosion overlay
+    const dramaticEl = document.createElement('div');
+    dramaticEl.className = 'explosion-dramatic';
+    dramaticEl.innerHTML = `
+      <div class="explosion-shake-layer">
+        <div class="explosion-white"></div>
+        <div class="explosion-cracks"></div>
+        <div class="explosion-fireball"></div>
+        <div class="explosion-fireball-2"></div>
+        <div class="explosion-ring"></div>
+        <div class="explosion-ring-2"></div>
+        <div class="explosion-pulse"></div>
+        <div class="explosion-smoke"></div>
+        <div class="explosion-embers"></div>
+        <div class="explosion-debris"></div>
+      </div>
+    `;
+    document.body.appendChild(dramaticEl);
 
-    // Transition to result screen after the flash
+    // Spawn random embers — lots of them
+    const embersContainer = dramaticEl.querySelector('.explosion-embers');
+    for (let i = 0; i < 80; i++) {
+      const ember = document.createElement('div');
+      ember.className = 'ember';
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 150 + Math.random() * 800;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist - 300;
+      const size = 2 + Math.random() * 6;
+      const hue = 15 + Math.random() * 35;
+      const light = 45 + Math.random() * 40;
+      ember.style.cssText = `
+        animation-delay: ${Math.random() * 0.4}s;
+        animation-duration: ${0.8 + Math.random() * 1.5}s;
+        --tx: ${tx}px; --ty: ${ty}px;
+        width: ${size}px; height: ${size}px;
+        background: hsl(${hue}, 100%, ${light}%);
+        box-shadow: 0 0 ${size * 2}px hsl(${hue}, 100%, ${light}%);
+      `;
+      embersContainer.appendChild(ember);
+    }
+
+    // Spawn debris chunks
+    const debrisContainer = dramaticEl.querySelector('.explosion-debris');
+    for (let i = 0; i < 25; i++) {
+      const chunk = document.createElement('div');
+      chunk.className = 'debris';
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 300 + Math.random() * 700;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist - 200;
+      const w = 8 + Math.random() * 20;
+      const h = 6 + Math.random() * 14;
+      const rot = Math.random() * 720 - 360;
+      chunk.style.cssText = `
+        width: ${w}px; height: ${h}px;
+        animation-delay: ${Math.random() * 0.2}s;
+        animation-duration: ${1.2 + Math.random() * 1}s;
+        --tx: ${tx}px; --ty: ${ty}px; --rot: ${rot}deg;
+      `;
+      debrisContainer.appendChild(chunk);
+    }
+
+    // Hide the game content immediately — bomb is destroyed
+    const gameContent = document.getElementById('game-content');
+    if (gameContent) gameContent.style.opacity = '0';
+    const chatPanel = document.querySelector('.chat-panel');
+    if (chatPanel) chatPanel.style.opacity = '0';
+
+    // Transition to result after explosion peak
     setTimeout(() => {
       showScreen('result');
       resultContainer.classList.add('lose-bg');
-    }, 800);
+      // Restore opacity after screen has fully switched
+      setTimeout(() => {
+        if (gameContent) gameContent.style.opacity = '';
+        if (chatPanel) chatPanel.style.opacity = '';
+      }, 500);
+    }, 1500);
 
-    // Clean up explosion overlay after drip animations fully fade out
+    // Clean up after all animations finish
     setTimeout(() => {
+      dramaticEl.remove();
       explosionOverlay.classList.add('hidden');
       explosionOverlay.classList.remove('active');
-    }, 6500);
+    }, 5000);
   }
 
   // Score display
@@ -2323,7 +2432,7 @@ function showConfirmation(e, text, onConfirm) {
 confirmYes.addEventListener('click', () => { confirmTooltip.classList.add('hidden'); if (confirmCallback) confirmCallback(); confirmCallback = null; });
 confirmNo.addEventListener('click', () => { confirmTooltip.classList.add('hidden'); confirmCallback = null; });
 document.addEventListener('click', (e) => {
-  if (!confirmTooltip.classList.contains('hidden') && !confirmTooltip.contains(e.target) && !e.target.closest('.wire-row,.bomb-button-cap,.keypad-key,.morse-submit-btn')) {
+  if (!confirmTooltip.classList.contains('hidden') && !confirmTooltip.contains(e.target) && !e.target.closest('.wire-row,.bomb-button-cap,.keypad-key,.morse-submit-btn,.password-submit-btn,.knob-submit-btn,.maze-dir-btn,.memory-button')) {
     confirmTooltip.classList.add('hidden'); confirmCallback = null;
   }
 });
@@ -2574,49 +2683,48 @@ const magnifierLens = document.getElementById('magnifier-lens');
 let magActive = false;
 let magDragging = false;
 let magOffsetX = 0, magOffsetY = 0;
-const MAG_ZOOM = 2;
 const MAG_SIZE = 260;
+
+const MAG_ZOOM = 1.8;
 
 function toggleMagnifier() {
   magActive = !magActive;
   magnifier.classList.toggle('hidden', !magActive);
   if (magActive) {
-    // Place a scaled clone of the game screen inside the lens
     magnifier.style.left = (window.innerWidth / 2 - MAG_SIZE / 2) + 'px';
     magnifier.style.top = (window.innerHeight / 3) + 'px';
-    setupMagClone();
-    updateMagClone();
+    refreshMagLens();
   } else {
     const old = magnifierLens.querySelector('.mag-clone');
     if (old) old.remove();
   }
 }
 
-function setupMagClone() {
+function refreshMagLens() {
+  if (!magActive) return;
   const old = magnifierLens.querySelector('.mag-clone');
   if (old) old.remove();
+  // Clone the entire game screen for full coverage
   const gameScreen = document.getElementById('screen-game');
   if (!gameScreen) return;
   const clone = gameScreen.cloneNode(true);
   clone.className = 'mag-clone';
-  clone.style.cssText = 'position:absolute;transform-origin:0 0;transform:scale('+MAG_ZOOM+');pointer-events:none;width:'+window.innerWidth+'px;height:'+window.innerHeight+'px;top:0;left:0;';
+  clone.style.cssText = `position:absolute;transform-origin:0 0;pointer-events:none;width:${window.innerWidth}px;height:${window.innerHeight}px;overflow:visible;display:flex;`;
   magnifierLens.appendChild(clone);
+  updateMagPosition();
 }
 
-function updateMagClone() {
+function updateMagPosition() {
   if (!magActive) return;
   const clone = magnifierLens.querySelector('.mag-clone');
   if (!clone) return;
-  const rect = magnifier.getBoundingClientRect();
-  const cx = rect.left + MAG_SIZE / 2;
-  const cy = rect.top + MAG_SIZE / 2;
-  const offsetX = -(cx * MAG_ZOOM) + MAG_SIZE / 2;
-  const offsetY = -(cy * MAG_ZOOM) + MAG_SIZE / 2;
-  clone.style.transform = `scale(${MAG_ZOOM}) translate(${offsetX / MAG_ZOOM}px, ${offsetY / MAG_ZOOM}px)`;
+  const magRect = magnifier.getBoundingClientRect();
+  const cx = magRect.left + MAG_SIZE / 2;
+  const cy = magRect.top + MAG_SIZE / 2;
+  const tx = (-cx * MAG_ZOOM + MAG_SIZE / 2) / MAG_ZOOM;
+  const ty = (-cy * MAG_ZOOM + MAG_SIZE / 2) / MAG_ZOOM;
+  clone.style.transform = `scale(${MAG_ZOOM}) translate(${tx}px, ${ty}px)`;
 }
-
-// Refresh clone periodically when active
-setInterval(() => { if (magActive) { setupMagClone(); updateMagClone(); } }, 2000);
 
 // Drag handlers
 magnifier.addEventListener('mousedown', (e) => {
@@ -2630,10 +2738,10 @@ document.addEventListener('mousemove', (e) => {
   if (!magDragging) return;
   magnifier.style.left = (e.clientX - magOffsetX) + 'px';
   magnifier.style.top = (e.clientY - magOffsetY) + 'px';
-  updateMagClone();
+  updateMagPosition();
 });
 
-document.addEventListener('mouseup', () => { magDragging = false; });
+document.addEventListener('mouseup', () => { if (magDragging) { magDragging = false; refreshMagLens(); } });
 
 // Touch support
 magnifier.addEventListener('touchstart', (e) => {
@@ -2649,15 +2757,201 @@ document.addEventListener('touchmove', (e) => {
   const t = e.touches[0];
   magnifier.style.left = (t.clientX - magOffsetX) + 'px';
   magnifier.style.top = (t.clientY - magOffsetY) + 'px';
-  updateMagClone();
+  updateMagPosition();
 }, { passive: false });
 
-document.addEventListener('touchend', () => { magDragging = false; });
+document.addEventListener('touchend', () => { if (magDragging) { magDragging = false; refreshMagLens(); } });
 
 // Close magnifier on Escape
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && magActive) { magActive = false; magnifier.classList.add('hidden'); }
 });
+
+// ══════════════════════ PAGE FLIP HELPER ══════════════════════
+function flipManualPage(newTab) {
+  const body = document.getElementById('manual-body');
+  if (!body) return;
+  body.classList.add('page-flip-out');
+  AudioFX.pageFlip();
+  setTimeout(() => {
+    body.innerHTML = renderManualTab(newTab);
+    body.classList.remove('page-flip-out');
+    body.classList.add('page-flip-in');
+    setTimeout(() => body.classList.remove('page-flip-in'), 300);
+    if (magActive) setTimeout(refreshMagLens, 50);
+  }, 320);
+}
+
+// ══════════════════════ FAUX-3D: MOUSE TRACKING & EFFECTS ══════════════════════
+const gameMain = document.querySelector('.game-main');
+const gameContent = document.getElementById('game-content');
+const lightingOverlay = document.getElementById('lighting-overlay');
+
+if (gameMain) {
+  gameMain.addEventListener('mousemove', (e) => {
+    const rect = gameMain.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * 2 - 1; // -1 to 1
+    const my = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    gameContent.style.setProperty('--mx', mx.toFixed(3));
+    gameContent.style.setProperty('--my', my.toFixed(3));
+    if (lightingOverlay) {
+      lightingOverlay.style.setProperty('--mx', mx.toFixed(3));
+      lightingOverlay.style.setProperty('--my', my.toFixed(3));
+    }
+  });
+
+  gameMain.addEventListener('mouseleave', () => {
+    gameContent.style.setProperty('--mx', '0');
+    gameContent.style.setProperty('--my', '0');
+  });
+}
+
+// Lighting flash helpers
+function flashLighting(color, duration) {
+  if (!lightingOverlay) return;
+  lightingOverlay.classList.add('flash-' + color);
+  setTimeout(() => lightingOverlay.classList.remove('flash-' + color), duration || 400);
+}
+
+// ── Magnifier Lens Crack System ──
+let magCrackLevel = 0;
+
+function addMagCrack(strikeNum) {
+  const lens = document.getElementById('magnifier-lens');
+  if (!lens) return;
+  magCrackLevel = Math.min(strikeNum, 3);
+  // Remove old crack SVG
+  const old = lens.querySelector('.mag-cracks');
+  if (old) old.remove();
+  // Build crack SVG sized to lens
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 260 260');
+  svg.setAttribute('class', 'mag-cracks');
+  svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;border-radius:50%;overflow:hidden;';
+
+  const cx = 130, cy = 130;
+  // Generate cracks radiating from a strike point
+  const strikePoints = [
+    { x: 90, y: 70 },   // strike 1 — upper left
+    { x: 180, y: 170 },  // strike 2 — lower right
+    { x: 130, y: 130 },  // strike 3 — dead center
+  ];
+  for (let s = 0; s < magCrackLevel; s++) {
+    const sp = strikePoints[s];
+    const numLines = 5 + s * 3; // more cracks per strike
+    for (let i = 0; i < numLines; i++) {
+      const angle = (i / numLines) * Math.PI * 2 + (s * 0.5);
+      const len = 80 + Math.random() * 100;
+      const ex = sp.x + Math.cos(angle) * len;
+      const ey = sp.y + Math.sin(angle) * len;
+      // Main crack — thick, bright white
+      const mid1x = sp.x + Math.cos(angle) * len * 0.4 + (Math.random() - 0.5) * 20;
+      const mid1y = sp.y + Math.sin(angle) * len * 0.4 + (Math.random() - 0.5) * 20;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M${sp.x} ${sp.y} Q${mid1x} ${mid1y} ${ex} ${ey}`);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', `rgba(255,255,255,${0.5 + s * 0.15})`);
+      path.setAttribute('stroke-width', `${2 + s * 1}`);
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('filter', 'drop-shadow(0 0 2px rgba(255,255,255,0.4))');
+      svg.appendChild(path);
+      // Branches — more of them, more visible
+      if (Math.random() > 0.25) {
+        const bAngle = angle + (Math.random() - 0.5) * 1.5;
+        const bLen = 25 + Math.random() * 45;
+        const bx = mid1x + Math.cos(bAngle) * bLen;
+        const by = mid1y + Math.sin(bAngle) * bLen;
+        const branch = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        branch.setAttribute('d', `M${mid1x} ${mid1y} L${bx} ${by}`);
+        branch.setAttribute('fill', 'none');
+        branch.setAttribute('stroke', `rgba(255,255,255,${0.3 + s * 0.1})`);
+        branch.setAttribute('stroke-width', `${1.2 + s * 0.3}`);
+        svg.appendChild(branch);
+        // Sub-branch
+        if (Math.random() > 0.5) {
+          const sbAngle = bAngle + (Math.random() - 0.5) * 1;
+          const sbLen = 10 + Math.random() * 20;
+          const sbx = bx + Math.cos(sbAngle) * sbLen;
+          const sby = by + Math.sin(sbAngle) * sbLen;
+          const sub = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          sub.setAttribute('d', `M${bx} ${by} L${sbx} ${sby}`);
+          sub.setAttribute('fill', 'none');
+          sub.setAttribute('stroke', `rgba(255,255,255,${0.2 + s * 0.05})`);
+          sub.setAttribute('stroke-width', '0.8');
+          svg.appendChild(sub);
+        }
+      }
+    }
+    // Impact point — bigger, glowing
+    const impact = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    impact.setAttribute('cx', sp.x);
+    impact.setAttribute('cy', sp.y);
+    impact.setAttribute('r', 6 + s * 3);
+    impact.setAttribute('fill', `rgba(255,255,255,${0.08 + s * 0.04})`);
+    impact.setAttribute('stroke', `rgba(255,255,255,${0.5 + s * 0.15})`);
+    impact.setAttribute('stroke-width', '2');
+    impact.setAttribute('filter', 'drop-shadow(0 0 3px rgba(255,255,255,0.3))');
+    svg.appendChild(impact);
+  }
+  lens.appendChild(svg);
+}
+
+function shatterMagLens() {
+  const mag = document.getElementById('magnifier');
+  const lens = document.getElementById('magnifier-lens');
+  if (!lens || !mag) return;
+  // Max cracks
+  addMagCrack(3);
+  // Add shatter class for bright cracks
+  lens.classList.add('mag-shattered');
+  // Spawn tiny glass shards falling from magnifier position
+  const rect = mag.getBoundingClientRect();
+  const mcx = rect.left + rect.width / 2;
+  const mcy = rect.top + rect.height / 2;
+  for (let i = 0; i < 10; i++) {
+    const shard = document.createElement('div');
+    shard.className = 'lens-shard';
+    const tx = (Math.random() - 0.5) * 150;
+    const ty = 80 + Math.random() * 200;
+    const rot = Math.random() * 180 - 90;
+    const w = 10 + Math.random() * 30;
+    const h = 8 + Math.random() * 20;
+    shard.style.cssText = `
+      left: ${mcx - w / 2}px; top: ${mcy - h / 2}px;
+      width: ${w}px; height: ${h}px;
+      --p1: ${Math.random()*30}%; --p2: ${Math.random()*20}%;
+      --p3: ${70+Math.random()*30}%; --p4: ${Math.random()*40}%;
+      --p5: ${30+Math.random()*40}%; --p6: ${80+Math.random()*20}%;
+      --tx: ${tx}px; --ty: ${ty}px; --rot: ${rot}deg;
+      --dur: ${1 + Math.random() * 1}s; --delay: ${Math.random() * 0.2}s;
+    `;
+    document.body.appendChild(shard);
+    setTimeout(() => shard.remove(), 3000);
+  }
+}
+
+function resetMagCracks() {
+  const lens = document.getElementById('magnifier-lens');
+  if (!lens) return;
+  const old = lens.querySelector('.mag-cracks');
+  if (old) old.remove();
+  lens.classList.remove('mag-shattered');
+  magCrackLevel = 0;
+}
+
+// ══════════════════════ FAUX-3D: MODULE ENTRANCE ══════════════════════
+function animateModuleEntrance() {
+  const panels = document.querySelectorAll('.module-panel');
+  panels.forEach((panel, i) => {
+    panel.style.opacity = '0';
+    panel.style.transform = 'translateZ(-20px) scale(0.92)';
+    setTimeout(() => {
+      panel.style.transition = 'opacity 0.4s ease-out, transform 0.4s ease-out';
+      panel.style.opacity = '1';
+      panel.style.transform = 'translateZ(8px) scale(1)';
+    }, 100 + i * 120);
+  });
+}
 
 // ══════════════════════ TOPBAR EXIT MENU ══════════════════════
 const topbarTitle = document.getElementById('topbar-title');

@@ -260,6 +260,211 @@ const AudioFX = (() => {
       });
     },
 
+    // Radio click — short crackle for transmission start
+    radioClick() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        const bufLen = c.sampleRate * 0.06;
+        const buf = c.createBuffer(1, bufLen, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i/bufLen);
+        const n = c.createBufferSource(); n.buffer = buf;
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2000; bp.Q.value = 2;
+        const g = c.createGain(); g.gain.setValueAtTime(0.2, t);
+        n.connect(bp).connect(g).connect(dest); n.start(t); n.stop(t + 0.06);
+        // Pop
+        const o = c.createOscillator(); const og = c.createGain();
+        o.type = 'sine'; o.frequency.value = 800;
+        og.gain.setValueAtTime(0.15, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+        o.connect(og).connect(dest); o.start(t); o.stop(t + 0.04);
+      });
+    },
+
+    // Tension drone — low rumble for intro atmosphere
+    tensionDrone(duration) {
+      play((c, dest) => {
+        const t = c.currentTime;
+        const dur = duration || 3;
+        const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 40;
+        const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = 55;
+        const lfo = c.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.5;
+        const lfoG = c.createGain(); lfoG.gain.value = 5;
+        lfo.connect(lfoG).connect(o.frequency);
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 120;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.08, t + 0.5);
+        g.gain.linearRampToValueAtTime(0.06, t + dur - 0.5);
+        g.gain.linearRampToValueAtTime(0, t + dur);
+        o.connect(lp); o2.connect(lp); lp.connect(g).connect(dest);
+        o.start(t); o2.start(t); lfo.start(t);
+        o.stop(t + dur); o2.stop(t + dur); lfo.stop(t + dur);
+      });
+    },
+
+    // Impact boom — heavy slam for intro text
+    impactBoom() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        // Sub hit
+        const o = c.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(80, t);
+        o.frequency.exponentialRampToValueAtTime(25, t + 0.3);
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.3, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        o.connect(g).connect(dest); o.start(t); o.stop(t + 0.5);
+        // Noise layer
+        const bufLen = c.sampleRate * 0.15;
+        const buf = c.createBuffer(1, bufLen, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/bufLen, 2);
+        const n = c.createBufferSource(); n.buffer = buf;
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 200;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.12, t);
+        n.connect(hp).connect(ng).connect(dest); n.start(t); n.stop(t + 0.15);
+      });
+    },
+
+    // Stamp sound — sharp impact for classified stamp
+    stampHit() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        const o = c.createOscillator(); o.type = 'triangle';
+        o.frequency.setValueAtTime(200, t);
+        o.frequency.exponentialRampToValueAtTime(80, t + 0.1);
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.2, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        o.connect(g).connect(dest); o.start(t); o.stop(t + 0.2);
+      });
+    },
+
+    // Reveal whoosh — for intro-to-game transition
+    revealWhoosh() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        const bufLen = c.sampleRate * 0.3;
+        const buf = c.createBuffer(1, bufLen, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) {
+          const env = i < bufLen*0.3 ? i/(bufLen*0.3) : Math.pow(1-(i-bufLen*0.3)/(bufLen*0.7), 1.5);
+          d[i] = (Math.random() * 2 - 1) * env;
+        }
+        const n = c.createBufferSource(); n.buffer = buf;
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1000, t);
+        bp.frequency.exponentialRampToValueAtTime(5000, t + 0.15);
+        bp.frequency.exponentialRampToValueAtTime(800, t + 0.3);
+        bp.Q.value = 0.5;
+        const g = c.createGain(); g.gain.setValueAtTime(0.15, t);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        n.connect(bp).connect(g).connect(dest); n.start(t); n.stop(t + 0.35);
+      });
+    },
+
+    // Heartbeat — deep visceral thump
+    heartbeat() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        // Lub
+        const lub = c.createOscillator(); lub.type = 'sine'; lub.frequency.value = 80;
+        const lubG = c.createGain(); lubG.gain.setValueAtTime(0.07, t); lubG.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        lub.connect(lubG).connect(dest); lub.start(t); lub.stop(t + 0.12);
+        // Dub (slightly delayed, lower)
+        const dub = c.createOscillator(); dub.type = 'sine'; dub.frequency.value = 55;
+        const dubG = c.createGain(); dubG.gain.setValueAtTime(0.05, t + 0.15); dubG.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        dub.connect(dubG).connect(dest); dub.start(t + 0.15); dub.stop(t + 0.28);
+      });
+    },
+
+    // Ambient siren — distant, filtered, barely audible
+    ambientSiren() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        const o = c.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(400, t);
+        o.frequency.linearRampToValueAtTime(600, t + 1);
+        o.frequency.linearRampToValueAtTime(400, t + 2);
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.025, t + 0.3);
+        g.gain.linearRampToValueAtTime(0.025, t + 1.7); g.gain.linearRampToValueAtTime(0, t + 2);
+        o.connect(lp).connect(g).connect(dest); o.start(t); o.stop(t + 2.1);
+      });
+    },
+
+    // CRT power on — zap + hum
+    crtPowerOn() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        // Zap
+        const bufLen = c.sampleRate * 0.05;
+        const buf = c.createBuffer(1, bufLen, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+        const n = c.createBufferSource(); n.buffer = buf;
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.1, t);
+        n.connect(hp).connect(ng).connect(dest); n.start(t); n.stop(t + 0.05);
+        // Low hum
+        const hum = c.createOscillator(); hum.type = 'sine'; hum.frequency.value = 50;
+        const humG = c.createGain();
+        humG.gain.setValueAtTime(0, t + 0.05); humG.gain.linearRampToValueAtTime(0.02, t + 0.3);
+        humG.gain.linearRampToValueAtTime(0, t + 0.8);
+        hum.connect(humG).connect(dest); hum.start(t + 0.05); hum.stop(t + 0.9);
+      });
+    },
+
+    // Typing clicks — rapid tiny clicks
+    typingClicks(count) {
+      play((c, dest) => {
+        const t = c.currentTime;
+        const n = count || 20;
+        let offset = 0;
+        for (let i = 0; i < n; i++) {
+          offset += 0.03 + Math.random() * 0.06;
+          const o = c.createOscillator(); o.type = 'square';
+          o.frequency.value = 1100 + Math.random() * 300;
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.06, t + offset);
+          g.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.01);
+          o.connect(g).connect(dest); o.start(t + offset); o.stop(t + offset + 0.012);
+        }
+      });
+    },
+
+    // Metal door clang — heavy finality sound
+    metalClang() {
+      play((c, dest) => {
+        const t = c.currentTime;
+        // Impact
+        const o = c.createOscillator(); o.type = 'triangle';
+        o.frequency.setValueAtTime(180, t);
+        o.frequency.exponentialRampToValueAtTime(90, t + 0.15);
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.2, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        o.connect(g).connect(dest); o.start(t); o.stop(t + 0.35);
+        // Ring
+        const r = c.createOscillator(); r.type = 'sine';
+        r.frequency.value = 440;
+        const rg = c.createGain();
+        rg.gain.setValueAtTime(0.05, t);
+        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 8;
+        r.connect(bp).connect(rg).connect(dest); r.start(t); r.stop(t + 0.65);
+        // Noise
+        const bufLen = c.sampleRate * 0.08;
+        const buf = c.createBuffer(1, bufLen, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+        const n = c.createBufferSource(); n.buffer = buf;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.1, t);
+        n.connect(ng).connect(dest); n.start(t); n.stop(t + 0.08);
+      });
+    },
+
     // Fuse sizzle — short "tsssss" sound (filtered noise + high sine crackle)
     fuseLit() {
       play((c, dest) => {

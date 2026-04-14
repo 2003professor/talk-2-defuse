@@ -290,13 +290,17 @@ document.getElementById('btn-solo').addEventListener('click', () => {
   });
 });
 
-socket.on('solo-start', (data) => {
+socket.on('solo-start', async (data) => {
   resetMagCracks();
   isSoloMode = true;
   myRole = 'solo';
   bombState = data.bomb;
   manualData = data.manual;
   gameDifficulty = soloDifficulty;
+
+  // Play solo intro (only on first round)
+  if (soloRound === 1) await playIntro('solo');
+
   showScreen('game');
   renderSoloView();
   updateTimer(data.timer, 1);
@@ -737,15 +741,19 @@ socket.on('start-countdown', () => {
 });
 
 // ══════════════════════ GAME START ══════════════════════
-socket.on('game-start', (data) => {
-  showScreen('game');
-  resetMagCracks();
+socket.on('game-start', async (data) => {
   myRole = data.role;
   gameDifficulty = data.difficulty || 'easy';
   timerSpeed = 1;
   isHoldingButton = false;
   stripColor = null;
   simonFlashing = false;
+  resetMagCracks();
+
+  // Play cinematic intro before showing the game
+  await playIntro(data.role);
+
+  showScreen('game');
 
   if (data.role === 'executor') {
     bombState = data.bomb;
@@ -2832,6 +2840,438 @@ function flipManualPage(newTab, prevTab) {
     body.classList.add(inClass);
     setTimeout(() => { body.classList.remove(inClass); isFlipping = false; }, 350);
   }, 230);
+}
+
+// ══════════════════════ CINEMATIC INTRO SEQUENCE ══════════════════════
+const introOverlay = document.getElementById('intro-overlay');
+const introContent = document.getElementById('intro-content');
+const introSkipBtn = document.getElementById('intro-skip-btn');
+let introTimeout = null;
+let introResolve = null;
+
+function playIntro(role) {
+  // Skip only if user explicitly disabled in settings
+  if (settings.skipIntro) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    introResolve = resolve;
+    introOverlay.classList.remove('hidden');
+    introContent.innerHTML = '';
+
+    if (role === 'instructor') {
+      playInstructorIntro();
+    } else if (role === 'solo') {
+      playSoloIntro();
+    } else {
+      playExecutorIntro();
+    }
+
+  });
+}
+
+function endIntro() {
+  if (introTimeout) { clearTimeout(introTimeout); introTimeout = null; }
+  introOverlay.classList.add('hidden');
+  introContent.innerHTML = '';
+  if (introResolve) { introResolve(); introResolve = null; }
+}
+
+introSkipBtn.addEventListener('click', () => { endIntro(); AudioFX.click(); });
+
+function playExecutorIntro() {
+  AudioFX.tensionDrone(5.8);
+  AudioFX.ambientSiren();
+
+  const _t = [];
+  const sched = (fn, ms) => _t.push(setTimeout(() => { if (!introOverlay.classList.contains('hidden')) fn(); }, ms));
+
+  function glitch() {
+    const g = document.getElementById('intro-glitch');
+    if (g) { const top = 20 + Math.random() * 60; g.style.clipPath = `inset(${top}% 0 ${95-top}% 0)`; g.classList.add('active'); setTimeout(() => g.classList.remove('active'), 120); }
+  }
+  function rgbSplit() {
+    introContent.classList.add('intro-rgb-split');
+    setTimeout(() => introContent.classList.remove('intro-rgb-split'), 150);
+  }
+  function staticBurst() {
+    const s = document.createElement('div'); s.className = 'intro-static-burst';
+    introContent.appendChild(s); setTimeout(() => s.remove(), 150);
+  }
+
+  const bombShape = bombState ? (bombState.shape || 'unknown').toUpperCase() : 'UNKNOWN';
+
+  introContent.innerHTML = `
+    <div class="intro-vignette"></div>
+    <div class="intro-hud" id="intro-hud">
+      <div class="intro-hud-item intro-hud-tl">CAM-07 // REC <span class="intro-rec-dot">●</span>
+        <span class="intro-hud-signal"><span class="intro-hud-bar" style="height:4px"></span><span class="intro-hud-bar" style="height:7px"></span><span class="intro-hud-bar" style="height:10px"></span><span class="intro-hud-bar off" style="height:13px"></span></span>
+      </div>
+      <div class="intro-hud-item intro-hud-tr" id="intro-timestamp"></div>
+      <div class="intro-hud-item intro-hud-bl">FACILITY SECTOR 9 // AUTH LEVEL: OMEGA
+        <span class="intro-hud-battery"><span class="intro-hud-battery-body"><span class="intro-hud-battery-fill" id="intro-batt" style="width:85%"></span></span><span class="intro-hud-battery-tip"></span></span>
+      </div>
+      <div class="intro-hud-item intro-hud-br" id="intro-framecnt">FRM: 00000</div>
+    </div>
+    <div class="intro-glitch" id="intro-glitch"></div>
+    <div class="intro-radio" id="intro-radio1" style="position:absolute;top:32%;width:80%;text-align:center;"></div>
+    <div class="intro-radio" id="intro-radio2" style="position:absolute;top:38%;width:70%;text-align:center;font-size:14px;color:rgba(88,166,255,0.7);text-shadow:0 0 8px rgba(88,166,255,0.3);"></div>
+    <div class="intro-location" id="intro-loc" style="position:absolute;top:42%;"></div>
+    <div class="intro-sublocation" id="intro-subloc" style="position:absolute;top:52%;"></div>
+    <div class="intro-status" id="intro-status" style="position:absolute;top:58%;"></div>
+    <div class="intro-timer-preview" id="intro-timer" style="position:absolute;top:40%;"></div>
+    <div class="intro-approach" id="intro-approach" style="position:absolute;top:45%;"></div>
+    <div class="intro-flash" id="intro-flash"></div>
+  `;
+
+  // Night vision tint
+  introContent.classList.add('intro-nightvision');
+
+  // Live HUD
+  let frameNum = 0;
+  const hudInterval = setInterval(() => {
+    if (introOverlay.classList.contains('hidden')) { clearInterval(hudInterval); return; }
+    const ts = document.getElementById('intro-timestamp');
+    const fc = document.getElementById('intro-framecnt');
+    const bt = document.getElementById('intro-batt');
+    if (ts) { const now = new Date(); ts.textContent = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3,'0'); }
+    if (fc) { frameNum++; fc.textContent = 'FRM: ' + String(frameNum).padStart(5,'0'); }
+    if (bt) { const w = Math.max(10, 85 - frameNum * 0.5); bt.style.width = w + '%'; }
+  }, 100);
+
+  // 0.05-0.25s — garbled radio fragments (multiple voices)
+  sched(() => {
+    const g1 = document.createElement('div'); g1.className = 'intro-garble';
+    g1.textContent = '> ...PERIMETER SECURE—'; g1.style.cssText = 'top:28%;left:12%;';
+    introContent.appendChild(g1); setTimeout(() => g1.remove(), 250);
+  }, 50);
+  sched(() => {
+    const g2 = document.createElement('div'); g2.className = 'intro-garble';
+    g2.textContent = '> —COPY THAT, MOVING TO—'; g2.style.cssText = 'top:42%;left:58%;color:rgba(88,166,255,0.25);';
+    introContent.appendChild(g2); setTimeout(() => g2.remove(), 200);
+  }, 180);
+  sched(() => {
+    const g3 = document.createElement('div'); g3.className = 'intro-garble';
+    g3.textContent = '> —NEGATIVE, HOLD POS—'; g3.style.cssText = 'top:35%;left:35%;';
+    introContent.appendChild(g3); setTimeout(() => g3.remove(), 180);
+  }, 280);
+
+  // 0.35s — first radio transmission (command)
+  sched(() => {
+    AudioFX.radioClick();
+    AudioFX.typingClicks(35);
+    const r1 = document.getElementById('intro-radio1');
+    if (r1) { r1.textContent = '> COMMAND: EXPLOSIVE DEVICE CONFIRMED AT TARGET LOCATION.'; r1.classList.add('typing'); r1.style.opacity = '1'; }
+  }, 350);
+
+  // 0.5s — glitch + RGB split
+  sched(() => { glitch(); rgbSplit(); }, 550);
+
+  // 0.9s — second radio voice (different color — blue, field unit)
+  sched(() => {
+    AudioFX.radioClick();
+    const r2 = document.getElementById('intro-radio2');
+    if (r2) { r2.textContent = '> FIELD: Copy. Alpha unit en route. ETA 30 seconds.'; r2.classList.add('typing'); r2.style.opacity = '1'; }
+  }, 900);
+
+  // 1.1s — glitch
+  sched(glitch, 1100);
+
+  // 1.5s — location SLAMS in
+  sched(() => {
+    AudioFX.impactBoom();
+    document.querySelectorAll('#intro-radio1,#intro-radio2').forEach(el => { if (el) { el.style.transition = 'opacity 0.15s'; el.style.opacity = '0'; } });
+    const loc = document.getElementById('intro-loc');
+    if (loc) { loc.textContent = 'BUILDING 7'; loc.classList.add('slam'); }
+    introContent.classList.add('intro-shake');
+    setTimeout(() => introContent.classList.remove('intro-shake'), 400);
+    rgbSplit();
+  }, 1500);
+
+  // 1.8s — sublocation
+  sched(() => {
+    const sub = document.getElementById('intro-subloc');
+    if (sub) { sub.textContent = '— SUBLEVEL 3 — SECTOR NINE —'; sub.classList.add('show'); }
+  }, 1800);
+
+  // 2.1s — status lines (including device type)
+  sched(() => {
+    const status = document.getElementById('intro-status');
+    if (!status) return;
+    [
+      { text: '■ THREAT LEVEL: CRITICAL', cls: 'critical', delay: 0 },
+      { text: '■ CIVILIANS EVACUATED', cls: 'info', delay: 180 },
+      { text: `■ DEVICE TYPE: ${bombShape}`, cls: 'info', delay: 360 },
+      { text: '■ TIMER DETECTED — ACTIVE', cls: 'critical', delay: 540 },
+    ].forEach(l => {
+      const div = document.createElement('div');
+      div.className = `intro-status-line ${l.cls}`;
+      div.textContent = l.text;
+      status.appendChild(div);
+      setTimeout(() => div.classList.add('show'), l.delay);
+    });
+  }, 2100);
+
+  // 2.8s — heartbeat
+  sched(() => {
+    introContent.classList.add('intro-heartbeat');
+    AudioFX.heartbeat();
+    setTimeout(() => AudioFX.heartbeat(), 800);
+    setTimeout(() => AudioFX.heartbeat(), 1600);
+  }, 2800);
+
+  // 3.5s — timer preview
+  sched(() => {
+    introContent.classList.remove('intro-heartbeat');
+    document.querySelectorAll('#intro-loc,#intro-subloc,#intro-status').forEach(el => {
+      if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; }
+    });
+    const timer = document.getElementById('intro-timer');
+    if (timer) {
+      let c = 0;
+      const times = ['05:00','04:59','04:58','04:57','04:56'];
+      timer.textContent = times[0]; timer.classList.add('show');
+      const iv = setInterval(() => { c++; if (c < times.length) timer.textContent = times[c]; else clearInterval(iv); }, 100);
+    }
+  }, 3500);
+
+  // 4.0s — SILENCE: cut everything, brief darkness
+  sched(() => {
+    const timer = document.getElementById('intro-timer');
+    if (timer) timer.style.display = 'none';
+    introContent.classList.add('intro-silence');
+  }, 4000);
+
+  // 4.3s — approach text (in the silence)
+  sched(() => {
+    introContent.classList.remove('intro-silence');
+    const approach = document.getElementById('intro-approach');
+    if (approach) { approach.textContent = 'APPROACH THE DEVICE'; approach.classList.add('show'); }
+  }, 4300);
+
+  // 4.7s — glitch
+  sched(glitch, 4700);
+
+  // 5.0s — metal clang + white flash
+  sched(() => {
+    AudioFX.metalClang();
+    setTimeout(() => {
+      AudioFX.revealWhoosh();
+      const flash = document.getElementById('intro-flash');
+      if (flash) flash.classList.add('fire');
+    }, 150);
+  }, 5000);
+
+  sched(() => { clearInterval(hudInterval); introContent.classList.remove('intro-nightvision'); endIntro(); }, 5500);
+  introTimeout = _t[_t.length - 1];
+}
+
+function playInstructorIntro() {
+  AudioFX.tensionDrone(4);
+
+  const _t = [];
+  const sched = (fn, ms) => _t.push(setTimeout(() => { if (!introOverlay.classList.contains('hidden')) fn(); }, ms));
+
+  introContent.innerHTML = `
+    <div class="intro-vignette"></div>
+    <div class="intro-transmission" id="intro-trans" style="position:absolute;top:34%;"></div>
+    <div class="intro-surveillance" id="intro-surv" style="">
+      <svg viewBox="0 0 80 60" width="80" height="60" fill="none" stroke="rgba(100,255,100,0.5)" stroke-width="1.5">
+        <circle cx="40" cy="25" r="18"/><rect x="30" y="38" width="20" height="8" rx="2"/>
+        <line x1="40" y1="8" x2="40" y2="2"/><line x1="40" y1="2" x2="50" y2="-2" stroke-width="1"/>
+      </svg>
+      <div class="intro-surveillance-label">DEVICE IMAGE // LOW-RES CAPTURE</div>
+    </div>
+    <div class="intro-classified" id="intro-class" style="position:absolute;top:45%;"></div>
+    <div class="intro-file-list" id="intro-files" style="position:absolute;top:52%;left:50%;transform:translateX(-50%);"></div>
+    <div class="intro-loading-bar" id="intro-loadbar" style="position:absolute;top:63%;left:50%;transform:translateX(-50%);">
+      <div class="intro-loading-bar-fill" id="intro-loadfill"></div>
+    </div>
+    <div class="intro-loading-text" id="intro-loadtext" style="position:absolute;top:66%;">DECRYPTING MANUAL DATA...</div>
+    <div class="intro-connection" id="intro-conn" style="position:absolute;top:72%;"></div>
+    <div class="intro-flash" id="intro-flash"></div>
+  `;
+
+  // 0.0s — CRT power-on
+  introContent.classList.add('intro-crt-poweron', 'intro-crt-curve');
+  AudioFX.crtPowerOn();
+
+  // 0.3s — transmission flicker
+  sched(() => {
+    AudioFX.radioClick();
+    const trans = document.getElementById('intro-trans');
+    if (trans) { trans.textContent = '▶ INCOMING TRANSMISSION'; trans.classList.add('flicker'); }
+  }, 300);
+
+  // 0.7s — surveillance photo flash
+  sched(() => {
+    const surv = document.getElementById('intro-surv');
+    if (surv) surv.classList.add('show');
+  }, 700);
+
+  // 1.0s — classified stamp
+  sched(() => {
+    AudioFX.stampHit();
+    const cls = document.getElementById('intro-class');
+    if (cls) { cls.textContent = 'TOP SECRET // EYES ONLY'; cls.classList.add('stamp'); }
+    const trans = document.getElementById('intro-trans');
+    if (trans) { trans.style.transition = 'opacity 0.2s'; trans.style.opacity = '0.3'; }
+    introContent.classList.add('intro-shake');
+    setTimeout(() => introContent.classList.remove('intro-shake'), 300);
+  }, 1000);
+
+  // 1.2s — static burst between stamp and files
+  sched(() => {
+    const s = document.createElement('div'); s.className = 'intro-static-burst';
+    introContent.appendChild(s); setTimeout(() => s.remove(), 150);
+  }, 1200);
+
+  // 1.5s — file decryption scroll with REAL module names + loading bar
+  sched(() => {
+    const bar = document.getElementById('intro-loadbar');
+    const text = document.getElementById('intro-loadtext');
+    if (bar) bar.classList.add('show');
+    if (text) text.classList.add('show');
+    AudioFX.typingClicks(20);
+
+    const files = document.getElementById('intro-files');
+    if (!files) return;
+    // Use actual modules from the bomb if available
+    const moduleNames = bombState ? bombState.modules.map(m => m.type) : ['wires','button','keypad'];
+    const fileMap = {
+      wires: 'wire_protocols_v3.enc', button: 'button_schema.dat', keypad: 'keypad_columns.bin',
+      simon: 'simon_response_map.enc', morse: 'morse_frequencies.dat', memory: 'memory_matrix.enc',
+      maze: 'maze_layouts_v2.bin', password: 'password_wordlist.enc', knob: 'knob_patterns.dat',
+    };
+    const fileNames = moduleNames.slice(0, 5).map(m => fileMap[m] || `${m}_data.enc`);
+    fileNames.forEach((name, i) => {
+      setTimeout(() => {
+        if (introOverlay.classList.contains('hidden')) return;
+        const line = document.createElement('div');
+        line.className = 'intro-file-line';
+        line.innerHTML = `${name} <span class="file-status working">DECRYPTING...</span>`;
+        files.appendChild(line);
+        setTimeout(() => line.classList.add('show'), 20);
+        setTimeout(() => {
+          const st = line.querySelector('.file-status');
+          if (st) { st.textContent = 'DECRYPTED ✓'; st.className = 'file-status done'; }
+        }, 220);
+      }, i * 240);
+    });
+  }, 1500);
+
+  // 2.8s — connection established with partner name
+  sched(() => {
+    const conn = document.getElementById('intro-conn');
+    if (conn) {
+      // Try to get partner's name from lobby state
+      const partnerName = window._partnerName || 'EXECUTOR';
+      conn.innerHTML = `LINK TO ${partnerName.toUpperCase()}: <span class="intro-redact">████████</span> ACTIVE`;
+      conn.classList.add('show');
+    }
+    AudioFX.radioClick();
+  }, 2800);
+
+  // 3.3s — flash + end
+  sched(() => {
+    AudioFX.revealWhoosh();
+    const flash = document.getElementById('intro-flash');
+    if (flash) flash.classList.add('fire');
+  }, 3300);
+
+  sched(() => { introContent.classList.remove('intro-crt-poweron', 'intro-crt-curve'); endIntro(); }, 3700);
+  introTimeout = _t[_t.length - 1];
+}
+
+function playSoloIntro() {
+  AudioFX.tensionDrone(3.2);
+
+  const _t = [];
+  const sched = (fn, ms) => _t.push(setTimeout(() => { if (!introOverlay.classList.contains('hidden')) fn(); }, ms));
+
+  const diffLabel = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' }[soloDifficulty] || 'STANDARD';
+
+  introContent.innerHTML = `
+    <div class="intro-vignette"></div>
+    <div class="intro-hud">
+      <div class="intro-hud-item intro-hud-tl">TRAINING-CAM-01 // REC <span class="intro-rec-dot">●</span></div>
+      <div class="intro-hud-item intro-hud-tr" id="intro-timestamp-s"></div>
+      <div class="intro-hud-item intro-hud-bl">TRAINING DIVISION // CLEARANCE: STANDARD</div>
+    </div>
+    <div class="intro-glitch" id="intro-glitch"></div>
+    <div class="intro-solo-badge" id="intro-solo" style="position:absolute;top:34%;"></div>
+    <div class="intro-location" id="intro-loc" style="position:absolute;top:42%;font-size:36px;"></div>
+    <div class="intro-status" id="intro-status-solo" style="position:absolute;top:52%;"></div>
+    <div class="intro-approach" id="intro-approach" style="position:absolute;top:45%;"></div>
+    <div class="intro-flash" id="intro-flash"></div>
+  `;
+
+  // Live timestamp
+  const hudIv = setInterval(() => {
+    if (introOverlay.classList.contains('hidden')) { clearInterval(hudIv); return; }
+    const ts = document.getElementById('intro-timestamp-s');
+    if (ts) { const now = new Date(); ts.textContent = now.toTimeString().split(' ')[0]; }
+  }, 200);
+
+  // 0.3s — solo badge
+  sched(() => {
+    const badge = document.getElementById('intro-solo');
+    if (badge) { badge.textContent = '◆ SOLO OPERATION — PRACTICE MODE ◆'; badge.classList.add('show'); }
+  }, 300);
+
+  // 0.5s — glitch
+  sched(() => {
+    const g = document.getElementById('intro-glitch');
+    if (g) { g.classList.add('active'); setTimeout(() => g.classList.remove('active'), 100); }
+  }, 500);
+
+  // 0.8s — location slam
+  sched(() => {
+    AudioFX.impactBoom();
+    const loc = document.getElementById('intro-loc');
+    if (loc) { loc.textContent = 'TRAINING FACILITY'; loc.classList.add('slam'); }
+    introContent.classList.add('intro-shake');
+    setTimeout(() => introContent.classList.remove('intro-shake'), 300);
+  }, 800);
+
+  // 1.1s — difficulty + module count status
+  sched(() => {
+    const status = document.getElementById('intro-status-solo');
+    if (status) {
+      const modCount = bombState ? bombState.modules.length : '?';
+      [
+        { text: `■ DIFFICULTY: ${diffLabel}`, cls: 'critical', delay: 0 },
+        { text: `■ ROUND ${soloRound} / ${SOLO_ROUNDS_PER_LEVEL[soloDifficulty] || 3}`, cls: 'ready', delay: 180 },
+        { text: `■ MODULES: ${modCount}`, cls: 'info', delay: 360 },
+      ].forEach(l => {
+        const div = document.createElement('div');
+        div.className = `intro-status-line ${l.cls}`;
+        div.textContent = l.text;
+        status.appendChild(div);
+        setTimeout(() => div.classList.add('show'), l.delay);
+      });
+    }
+  }, 1100);
+
+  // 1.8s — fade + approach
+  sched(() => {
+    document.querySelectorAll('#intro-solo,#intro-loc,#intro-status-solo').forEach(el => {
+      if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; }
+    });
+    const approach = document.getElementById('intro-approach');
+    if (approach) { approach.textContent = 'BEGIN EXERCISE'; approach.classList.add('show'); }
+  }, 1800);
+
+  // 2.5s — flash
+  sched(() => {
+    AudioFX.revealWhoosh();
+    const flash = document.getElementById('intro-flash');
+    if (flash) flash.classList.add('fire');
+  }, 2500);
+
+  sched(() => { clearInterval(hudIv); endIntro(); }, 2900);
+  introTimeout = _t[_t.length - 1];
 }
 
 // ══════════════════════ FAUX-3D: MOUSE TRACKING & EFFECTS ══════════════════════

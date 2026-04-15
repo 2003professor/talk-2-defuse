@@ -2008,20 +2008,20 @@ function renderManualTab(tab) {
     html += '</tbody></table>';
   }
 
-  // ── Password word list ──
+  // ── Password word list (grouped by first letter) ──
   if (ch.wordList) {
     html += '<h3 class="section-subtitle">Valid Words</h3>';
-    html += '<table class="password-word-table"><tbody>';
-    const cols = 5;
-    for (let i = 0; i < ch.wordList.length; i += cols) {
-      html += '<tr>';
-      for (let j = 0; j < cols; j++) {
-        const w = ch.wordList[i + j];
-        html += w ? `<td class="password-word-cell">${w}</td>` : '<td></td>';
-      }
-      html += '</tr>';
-    }
-    html += '</tbody></table>';
+    const groups = {};
+    ch.wordList.forEach(w => {
+      const letter = w[0];
+      if (!groups[letter]) groups[letter] = [];
+      groups[letter].push(w);
+    });
+    html += '<div class="password-word-groups">';
+    Object.keys(groups).sort().forEach(letter => {
+      html += `<div class="pw-group"><span class="pw-letter">${letter}</span><span class="pw-words">${groups[letter].join(', ')}</span></div>`;
+    });
+    html += '</div>';
   }
 
   // ── Memory stages (protocol-dependent, rendered via ch.protocols[].stages) ──
@@ -2863,7 +2863,7 @@ function applyRedactions() {
       // Skip text inside tables, SVGs, code elements, and image containers
       const parent = node.parentElement;
       if (!parent) return NodeFilter.FILTER_REJECT;
-      if (parent.closest('table, svg, code, .morse-dict-table, .bomb-index-table, .strike-ref-table, .nato-table, .simon-table, .password-word-table, .keypad-columns-grid, .knob-pattern-table, .wire-legend, .wire-swatch, img, .mc_visual, .mc_code')) {
+      if (parent.closest('table, svg, code, .morse-dict-table, .bomb-index-table, .strike-ref-table, .nato-table, .simon-table, .password-word-table, .password-word-groups, .keypad-columns-grid, .knob-pattern-table, .wire-legend, .wire-swatch, img, .mc_visual, .mc_code')) {
         return NodeFilter.FILTER_REJECT;
       }
       return NodeFilter.FILTER_ACCEPT;

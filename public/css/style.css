@@ -3705,17 +3705,24 @@ body.colorblind .wire-color-black .wire-strand {
 }
 .password-arrow:hover { color: #58a6ff; border-color: #58a6ff; }
 .password-submit-btn { margin-top: 4px; }
-.password-word-table {
-  width: 100%; border-collapse: collapse;
+.password-word-groups {
+  display: flex; flex-direction: column; gap: 2px;
   font-family: 'SF Mono', Consolas, monospace; font-size: 13px;
+  border: 1px solid rgba(139,125,60,0.3); border-radius: 4px;
+  overflow: hidden;
 }
-.password-word-cell {
-  padding: 7px 12px; text-align: center; font-weight: 800; letter-spacing: 2px;
-  color: #2a3a2a; border: 1px solid rgba(139,125,60,0.3);
-  background: rgba(139,125,60,0.12);
+.pw-group {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 12px;
+  background: rgba(139,125,60,0.08);
 }
-.password-word-cell:nth-child(odd) { background: rgba(139,125,60,0.2); }
-.password-word-cell:hover { background: rgba(139,125,60,0.3); }
+.pw-group:nth-child(odd) { background: rgba(139,125,60,0.16); }
+.pw-letter {
+  font-weight: 900; font-size: 16px; letter-spacing: 2px;
+  color: #6b2020; min-width: 22px; text-align: center;
+}
+.pw-words {
+  font-weight: 700; letter-spacing: 1.5px; color: #2a3a2a;
 }
 
 /* ══════════════════════ MEMORY MODULE ══════════════════════ */

@@ -17,17 +17,24 @@ const rooms = new Map();
 const SCORES_DIR = path.join(__dirname, 'data');
 const SCORES_FILE = path.join(SCORES_DIR, 'scores.json');
 
+// In-memory scores cache — avoids blocking file I/O on every request
+let _scoresCache = null;
+
 function loadScores() {
+  if (_scoresCache) return _scoresCache;
   try {
-    return JSON.parse(fs.readFileSync(SCORES_FILE, 'utf-8'));
-  } catch { return []; }
+    _scoresCache = JSON.parse(fs.readFileSync(SCORES_FILE, 'utf-8'));
+  } catch { _scoresCache = []; }
+  return _scoresCache;
 }
 
 function saveScore(record) {
   if (!fs.existsSync(SCORES_DIR)) fs.mkdirSync(SCORES_DIR, { recursive: true });
   const scores = loadScores();
   scores.push(record);
-  fs.writeFileSync(SCORES_FILE, JSON.stringify(scores, null, 2));
+  _scoresCache = scores;
+  // Write async — don't block the event loop
+  fs.writeFile(SCORES_FILE, JSON.stringify(scores, null, 2), () => {});
 }
 
 function calculateScore(won, timeRemaining, strikes, difficulty, totalTime) {
@@ -1196,7 +1203,7 @@ io.on('connection', (socket) => {
       players: [{ id: socket.id, name: playerName, role: 'solo', ready: true, connected: true }],
       bomb: null, state: 'playing', difficulty: difficulty || 'easy', solo: true,
       customSettings: validCS,
-      timerTimeout: null, timerSpeed: 1, briefingReady: [],
+      timerTimeout: null, timerSpeed: 1, briefingReady: [], createdAt: Date.now(),
     };
     rooms.set(code, room);
     socket.join(code);
@@ -1231,7 +1238,7 @@ io.on('connection', (socket) => {
       players: [{ id: socket.id, name: playerName, role: null, ready: false }],
       bomb: null, state: 'lobby', difficulty: 'easy',
       customSettings: null,
-      timerTimeout: null, timerSpeed: 1, briefingReady: [],
+      timerTimeout: null, timerSpeed: 1, briefingReady: [], createdAt: Date.now(),
     });
     socket.join(code);
     socket.roomCode = code;
@@ -1757,6 +1764,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    rateLimits.delete(socket.id);
     const code = socket.roomCode;
     if (!code) return;
     const room = rooms.get(code);
@@ -2003,6 +2011,20 @@ function endGame(code, room, won, reason) {
     score,
   });
 }
+
+// Clean up stale rooms every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, room] of rooms) {
+    const hasConnected = room.players.some(p => p.connected);
+    const isStale = room.state === 'result' || (!hasConnected && room.createdAt && now - room.createdAt > 300000);
+    if (isStale) {
+      if (room.timerTimeout) clearTimeout(room.timerTimeout);
+      if (room.reconnectTimeout) clearTimeout(room.reconnectTimeout);
+      rooms.delete(code);
+    }
+  }
+}, 300000);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Wire & Fire running at http://localhost:${PORT}`));

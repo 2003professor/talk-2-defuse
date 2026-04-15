@@ -6,6 +6,7 @@ const VoiceChat = (() => {
   let remoteAudio = null;
   let analyser = null;
   let analyserData = null;
+  let audioCtx = null;
   let mode = 'open-mic'; // 'open-mic' | 'push-to-talk'
   let isMuted = false;
   let isConnected = false;
@@ -79,11 +80,12 @@ const VoiceChat = (() => {
 
     peerConnection.ontrack = (e) => {
       remoteAudio.srcObject = e.streams[0];
-      // Set up voice activity detection on remote stream
+      // Set up voice activity detection on remote stream — reuse AudioContext
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = ctx.createMediaStreamSource(e.streams[0]);
-        analyser = ctx.createAnalyser();
+        if (audioCtx) { audioCtx.close().catch(() => {}); }
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(e.streams[0]);
+        analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
         analyserData = new Uint8Array(analyser.frequencyBinCount);
         source.connect(analyser);
@@ -148,6 +150,7 @@ const VoiceChat = (() => {
 
   function hangup(remote) {
     if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null; }
+    if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; analyser = null; analyserData = null; }
     if (peerConnection) { peerConnection.close(); peerConnection = null; }
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
     isConnected = false;

@@ -320,6 +320,7 @@ socket.on('solo-start', async (data) => {
 });
 
 function renderSoloView() {
+  clearAllMorseTimeouts();
   // Hide chat panel in solo mode
   const chatPanel = document.querySelector('.chat-panel');
   if (chatPanel) chatPanel.classList.add('solo-hidden');
@@ -887,6 +888,7 @@ const SCREW_SVG = `<svg viewBox="0 0 12 12" width="12" height="12"><defs><radial
 const RIVET_SVG = `<svg viewBox="0 0 12 12" width="12" height="12"><defs><radialGradient id="rg" cx="35%" cy="28%"><stop offset="0%" stop-color="#aaa"/><stop offset="30%" stop-color="#777"/><stop offset="100%" stop-color="#3a3a3a"/></radialGradient></defs><circle cx="6" cy="6" r="4.5" fill="url(#rg)" stroke="#222" stroke-width="0.6"/><circle cx="4.5" cy="4.2" r="1.5" fill="rgba(255,255,255,0.12)"/></svg>`;
 
 function renderExecutorView() {
+  clearAllMorseTimeouts();
   const content = document.getElementById('game-content');
   document.getElementById('game-bomb-type').textContent = '';
 
@@ -1318,15 +1320,18 @@ function attachExecutorListeners() {
       AudioFX.click();
     });
   });
-  // Maze keyboard controls
-  document.addEventListener('keydown', (e) => {
-    if (!bombState) return;
-    const mazeIdx = bombState.modules.findIndex(m => m.type === 'maze' && !m.solved);
-    if (mazeIdx === -1) return;
-    const dirMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
-    const dir = dirMap[e.key];
-    if (dir) { e.preventDefault(); socket.emit('maze-move', { moduleIndex: mazeIdx, direction: dir }); AudioFX.click(); }
-  });
+  // Maze keyboard controls — use shared handler to avoid listener leak
+  if (!window._mazeKeyHandler) {
+    window._mazeKeyHandler = (e) => {
+      if (!bombState) return;
+      const mazeIdx = bombState.modules.findIndex(m => m.type === 'maze' && !m.solved);
+      if (mazeIdx === -1) return;
+      const dirMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+      const dir = dirMap[e.key];
+      if (dir) { e.preventDefault(); socket.emit('maze-move', { moduleIndex: mazeIdx, direction: dir }); AudioFX.click(); }
+    };
+    document.addEventListener('keydown', window._mazeKeyHandler);
+  }
 
   // Knob
   document.querySelectorAll('.knob-position-btn').forEach(btn => {
@@ -1367,7 +1372,16 @@ const MORSE_CODE = {
   U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..'
 };
 
+const _morseTimeouts = new Map();
+
+function clearAllMorseTimeouts() {
+  _morseTimeouts.forEach(tid => clearTimeout(tid));
+  _morseTimeouts.clear();
+}
+
 function startMorseFlash(moduleIndex, word) {
+  // Clear any existing timeout for this module
+  if (_morseTimeouts.has(moduleIndex)) clearTimeout(_morseTimeouts.get(moduleIndex));
   const lightEl = document.getElementById(`morse-light-${moduleIndex}`);
   if (!lightEl) return;
   const DOT = 200, DASH = 600, GAP = 200, LETTER_GAP = 600, WORD_GAP = 1400;
@@ -1384,11 +1398,11 @@ function startMorseFlash(moduleIndex, word) {
   timings.push({ on: false, duration: WORD_GAP });
   let idx = 0;
   function step() {
-    if (!document.getElementById(`morse-light-${moduleIndex}`)) return;
+    if (!document.getElementById(`morse-light-${moduleIndex}`)) { _morseTimeouts.delete(moduleIndex); return; }
     const t = timings[idx % timings.length];
     lightEl.classList.toggle('on', t.on);
     idx++;
-    setTimeout(step, t.duration);
+    _morseTimeouts.set(moduleIndex, setTimeout(step, t.duration));
   }
   step();
 }
@@ -2741,7 +2755,7 @@ socket.on('game-over', (data) => {
 
 // ══════════════════════ UTILITIES ══════════════════════
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
-function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ══════════════════════ RECONNECTION ══════════════════════
 let reconnectData = null; // { roomCode, playerName }
@@ -3115,9 +3129,14 @@ function toggleMagnifier() {
   }
 }
 
-function magLoop() {
+let _magLastFrame = 0;
+function magLoop(now) {
   if (!magActive) return;
-  updateMagZoom();
+  // Throttle to ~12fps — cloneNode is expensive
+  if (now - _magLastFrame > 80) {
+    _magLastFrame = now;
+    updateMagZoom();
+  }
   magRafId = requestAnimationFrame(magLoop);
 }
 
@@ -3202,7 +3221,6 @@ document.addEventListener('mousemove', (e) => {
   if (!magDragging) return;
   magnifier.style.left = (e.clientX - magOffsetX) + 'px';
   magnifier.style.top = (e.clientY - magOffsetY) + 'px';
-  updateMagPosition();
 });
 
 document.addEventListener('mouseup', () => { magDragging = false; });
@@ -3221,7 +3239,6 @@ document.addEventListener('touchmove', (e) => {
   const t = e.touches[0];
   magnifier.style.left = (t.clientX - magOffsetX) + 'px';
   magnifier.style.top = (t.clientY - magOffsetY) + 'px';
-  updateMagPosition();
 }, { passive: false });
 
 document.addEventListener('touchend', () => { magDragging = false; });
@@ -3335,7 +3352,9 @@ function playIntro(role) {
 }
 
 function endIntro() {
-  if (introTimeout) { clearTimeout(introTimeout); introTimeout = null; }
+  if (Array.isArray(introTimeout)) { introTimeout.forEach(t => clearTimeout(t)); }
+  else if (introTimeout) { clearTimeout(introTimeout); }
+  introTimeout = null;
   introOverlay.classList.add('hidden');
   introContent.innerHTML = '';
   if (introResolve) { introResolve(); introResolve = null; }
@@ -3530,7 +3549,7 @@ function playExecutorIntro() {
   }, 5000);
 
   sched(() => { clearInterval(hudInterval); introContent.classList.remove('intro-nightvision'); endIntro(); }, 5500);
-  introTimeout = _t[_t.length - 1];
+  introTimeout = _t;
 }
 
 function playInstructorIntro() {
@@ -3647,7 +3666,7 @@ function playInstructorIntro() {
   }, 3300);
 
   sched(() => { introContent.classList.remove('intro-crt-poweron', 'intro-crt-curve'); endIntro(); }, 3700);
-  introTimeout = _t[_t.length - 1];
+  introTimeout = _t;
 }
 
 function playSoloIntro() {
@@ -3737,7 +3756,7 @@ function playSoloIntro() {
   }, 2500);
 
   sched(() => { clearInterval(hudIv); endIntro(); }, 2900);
-  introTimeout = _t[_t.length - 1];
+  introTimeout = _t;
 }
 
 // ══════════════════════ KEYBOARD PAGE NAVIGATION ══════════════════════

@@ -93,7 +93,6 @@ const VoiceChat = (() => {
   async function createPeerConnection() {
     if (peerConnection) peerConnection.close();
     remoteDescSet = false;
-    iceCandidateQueue = [];
     peerConnection = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
       iceCandidatePoolSize: 4,
@@ -150,6 +149,7 @@ const VoiceChat = (() => {
       }
 
       isInitiator = true;
+      iceCandidateQueue = [];
       if (connectTimeout) clearTimeout(connectTimeout);
       await createPeerConnection();
       const offer = await peerConnection.createOffer();

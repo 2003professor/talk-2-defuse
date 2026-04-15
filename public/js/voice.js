@@ -14,6 +14,11 @@ const VoiceChat = (() => {
   const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    // Free Open Relay TURN servers for NAT traversal across different networks
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ];
 
   function init(sock) {
@@ -81,8 +86,18 @@ const VoiceChat = (() => {
     };
 
     peerConnection.onconnectionstatechange = () => {
-      isConnected = peerConnection.connectionState === 'connected';
+      const state = peerConnection.connectionState;
+      console.log('[Voice] Connection state:', state);
+      isConnected = state === 'connected';
+      if (state === 'failed') {
+        showVoiceError('Connection failed — try again');
+        hangup();
+      }
       updateUI();
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      console.log('[Voice] ICE state:', peerConnection.iceConnectionState);
     };
 
     if (localStream) {

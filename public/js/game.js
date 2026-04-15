@@ -3105,7 +3105,7 @@ function resetAllAnnotations() {
   annoDrawing = false;
   annoCanvas = null;
   annoCtx = null;
-  hideAnnoWrapper();
+  annoWrapperEl = null;
 }
 
 // ══════════════════════ MAGNIFYING GLASS ══════════════════════

@@ -647,8 +647,8 @@ document.getElementById('btn-ready').addEventListener('click', () => {
 
 socket.on('lobby-update', (state) => {
   renderLobbyPlayers(state);
-  // Auto-start voice chat when partner joins
-  if (state.players.length === 2 && !VoiceChat.hasStream) {
+  // Auto-start voice chat — only first player (host) initiates to avoid dual-offer deadlock
+  if (state.players.length === 2 && !VoiceChat.hasStream && state.players[0].name === myName) {
     VoiceChat.startCall();
   }
   document.querySelectorAll('.btn-diff').forEach(b => b.classList.toggle('active', b.dataset.diff === state.difficulty));

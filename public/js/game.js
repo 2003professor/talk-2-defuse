@@ -3305,6 +3305,9 @@ function endIntro() {
 }
 
 introSkipBtn.addEventListener('click', () => { endIntro(); AudioFX.click(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Shift' && !introOverlay.classList.contains('hidden')) { endIntro(); }
+});
 
 function playExecutorIntro() {
   AudioFX.tensionDrone(5.8);

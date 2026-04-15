@@ -14,11 +14,11 @@ const VoiceChat = (() => {
   const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    // Free Open Relay TURN servers for NAT traversal across different networks
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    // Metered TURN servers for NAT traversal across different networks
+    { urls: 'turn:a.relay.metered.ca:80', username: 'e0c13f0974b1dc518999f43f', credential: 'DmGWmNHKX68ki3dV' },
+    { urls: 'turn:a.relay.metered.ca:80?transport=tcp', username: 'e0c13f0974b1dc518999f43f', credential: 'DmGWmNHKX68ki3dV' },
+    { urls: 'turn:a.relay.metered.ca:443', username: 'e0c13f0974b1dc518999f43f', credential: 'DmGWmNHKX68ki3dV' },
+    { urls: 'turns:a.relay.metered.ca:443?transport=tcp', username: 'e0c13f0974b1dc518999f43f', credential: 'DmGWmNHKX68ki3dV' },
   ];
 
   function init(sock) {

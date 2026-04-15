@@ -3231,6 +3231,43 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && magActive) { magActive = false; magnifier.classList.add('hidden'); if (magRafId) { cancelAnimationFrame(magRafId); magRafId = null; } }
 });
 
+// ══════════════════════ FLIP MODE — ROLE SWAP ══════════════════════
+socket.on('flip-swap', (data) => {
+  const overlay = document.getElementById('flip-swap-overlay');
+  const textEl = document.getElementById('flip-swap-text');
+  const roleEl = document.getElementById('flip-swap-role');
+
+  // Show swap overlay
+  overlay.classList.remove('hidden');
+  textEl.textContent = 'ROLES SWAPPED!';
+  textEl.style.animation = 'none';
+  void textEl.offsetWidth; // reflow
+  textEl.style.animation = '';
+
+  const newRole = data.role;
+  roleEl.textContent = `YOU ARE NOW: ${newRole.toUpperCase()}`;
+  roleEl.className = `flip-swap-role role-${newRole}`;
+
+  AudioFX.impactBoom();
+
+  // Update local state
+  myRole = newRole;
+
+  // After 1.5s, hide overlay and re-render
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+    if (newRole === 'executor') {
+      bombState = data.bomb;
+      window._executorRendered = false; // allow entrance animation
+      renderExecutorView();
+    } else {
+      manualData = data.manual;
+      currentManualTab = 'index';
+      renderInstructorView();
+    }
+  }, 1500);
+});
+
 // ══════════════════════ PAGE FLIP HELPER ══════════════════════
 let isFlipping = false;
 const TAB_ORDER = ['index','overview','procedures','sequence','wires','button','keypad','simon','morse','memory','maze','password','knob','appendix'];

@@ -33,7 +33,7 @@ function saveScore(record) {
 function calculateScore(won, timeRemaining, strikes, difficulty, totalTime) {
   if (!won) return 0;
   if (difficulty === 'custom') return 0;
-  const multiplier = { easy: 1, medium: 2, hard: 3 }[difficulty] || 1;
+  const multiplier = { easy: 1, medium: 2, hard: 3, flip: 4 }[difficulty] || 1;
   let score = (1000 + timeRemaining * 10 - strikes * 200) * multiplier;
   if (timeRemaining > totalTime / 2) score += 500;
   return Math.max(0, Math.round(score));
@@ -126,6 +126,7 @@ function generateSerial() {
 
 function generateBomb(difficulty, customSettings) {
   const isCustom = difficulty === 'custom' && customSettings;
+  const isHardLike = difficulty === 'hard' || difficulty === 'flip';
   const shape = pick(BOMB_SHAPES);
   const size = pick(BOMB_SIZES);
   const serial = generateSerial();
@@ -173,7 +174,7 @@ function generateBomb(difficulty, customSettings) {
     hasLitFRK, hasLitCAR, hasLitBOB,
     casingTheme, casingTexture, stencilLabels, modelNumber,
     modules: [],
-    timer: isCustom ? customSettings.timer : difficulty === 'easy' ? 300 : difficulty === 'medium' ? 240 : 180,
+    timer: isCustom ? customSettings.timer : difficulty === 'easy' ? 300 : difficulty === 'medium' ? 240 : difficulty === 'flip' ? 300 : 180,
     maxStrikes: isCustom ? customSettings.maxStrikes : 3,
     strikes: 0,
     sequenceEnforcement: isCustom ? customSettings.sequenceEnforcement : true,
@@ -195,7 +196,7 @@ function generateBomb(difficulty, customSettings) {
   });
 
   // ── Button Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('button') : (difficulty === 'medium' || difficulty === 'hard')) {
+  if (isCustom ? customSettings.modules.includes('button') : (difficulty === 'medium' || isHardLike)) {
     const buttonColor = pick(BUTTON_COLORS_LIST);
     const buttonLabel = pick(BUTTON_LABELS);
     const buttonIcon = pick(BUTTON_ICONS);
@@ -208,7 +209,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Keypad Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('keypad') : (difficulty === 'medium' || difficulty === 'hard')) {
+  if (isCustom ? customSettings.modules.includes('keypad') : (difficulty === 'medium' || isHardLike)) {
     const columns = [
       ['★', '△', '♪', '☀', '♠', '♥', '☆'],
       ['♦', '★', '☆', '⚡', '♠', '♥', '□'],
@@ -228,7 +229,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Simon Says Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('simon') : difficulty === 'hard') {
+  if (isCustom ? customSettings.modules.includes('simon') : isHardLike) {
     const sequenceLength = 3 + Math.floor(Math.random() * 2);
     const sequence = [];
     for (let i = 0; i < sequenceLength; i++) sequence.push(pick(SIMON_COLORS));
@@ -240,7 +241,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Password Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('password') : (difficulty === 'medium' || difficulty === 'hard')) {
+  if (isCustom ? customSettings.modules.includes('password') : (difficulty === 'medium' || isHardLike)) {
     const word = pick(PASSWORD_WORDS);
     const columns = [];
     for (let i = 0; i < 5; i++) {
@@ -256,7 +257,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Memory Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('memory') : (difficulty === 'medium' || difficulty === 'hard')) {
+  if (isCustom ? customSettings.modules.includes('memory') : (difficulty === 'medium' || isHardLike)) {
     const stages = generateMemoryStages(protocol);
     bomb.modules.push({
       type: 'memory', stages,
@@ -265,7 +266,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Maze Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('maze') : difficulty === 'hard') {
+  if (isCustom ? customSettings.modules.includes('maze') : isHardLike) {
     const layout = pick(MAZE_LAYOUTS);
     const wallSet = getMazeWallSet(layout);
     // Pick random start and end that aren't the same or markers
@@ -284,7 +285,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Knob Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('knob') : difficulty === 'hard') {
+  if (isCustom ? customSettings.modules.includes('knob') : isHardLike) {
     const patterns = KNOB_PATTERNS[protocol];
     const chosen = pick(patterns);
     bomb.modules.push({
@@ -294,7 +295,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Morse Code Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('morse') : difficulty === 'hard') {
+  if (isCustom ? customSettings.modules.includes('morse') : isHardLike) {
     const morseWords = [
       { word: 'SHELL', freq: '3.505' }, { word: 'HALLS', freq: '3.515' },
       { word: 'SLICK', freq: '3.522' }, { word: 'TRICK', freq: '3.532' },
@@ -1904,6 +1905,24 @@ function checkWin(code, room) {
   if (room.bomb.modules.every(m => m.solved)) {
     endGame(code, room, true, 'All modules defused!');
     return;
+  }
+
+  // Flip mode: swap roles after every module solve
+  if (room.difficulty === 'flip' && room.players.length === 2) {
+    const p1 = room.players[0];
+    const p2 = room.players[1];
+    if (p1.role && p2.role && p1.role !== 'solo') {
+      const temp = p1.role;
+      p1.role = p2.role;
+      p2.role = temp;
+      // Send the new roles + full state to both players
+      room.players.forEach(p => {
+        const data = p.role === 'executor'
+          ? { role: 'executor', bomb: getExecutorView(room.bomb) }
+          : { role: 'instructor', manual: room.bomb.manual, timer: room.bomb.timer, maxStrikes: room.bomb.maxStrikes };
+        io.to(p.id).emit('flip-swap', data);
+      });
+    }
   }
 }
 

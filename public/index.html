@@ -6,7 +6,7 @@
   <title>Talk 2 Defuse — Cooperative Bomb Defusal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Oswald:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -467,6 +467,10 @@
               <strong>Hard</strong>
               <span>9 modules · 3 min · Mistakes speed up timer</span>
             </button>
+            <button class="btn btn-diff btn-diff-flip" data-diff="flip">
+              <strong>⚡ Flip</strong>
+              <span>Roles swap every solve!</span>
+            </button>
             <button class="btn btn-diff" data-diff="custom">
               <strong>Custom</strong>
               <span>Configure your own</span>
@@ -664,6 +668,12 @@
       <button id="confirm-yes" class="btn btn-confirm-yes">Confirm</button>
       <button id="confirm-no" class="btn btn-confirm-no">Cancel</button>
     </div>
+  </div>
+
+  <!-- ══════════════════════ FLIP MODE SWAP OVERLAY ══════════════════════ -->
+  <div id="flip-swap-overlay" class="flip-swap-overlay hidden">
+    <div class="flip-swap-text" id="flip-swap-text">ROLES SWAPPED!</div>
+    <div class="flip-swap-role" id="flip-swap-role"></div>
   </div>
 
   <!-- ══════════════════════ CINEMATIC INTRO OVERLAY ══════════════════════ -->

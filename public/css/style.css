@@ -36,6 +36,567 @@ html, body {
   overflow: hidden;
 }
 
+/* ══════════════════════ LANDING PAGE — REDESIGN ══════════════════════ */
+
+/* Full-screen atmosphere */
+#screen-landing.active {
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 20%, rgba(240,136,62,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 70%, rgba(88,166,255,0.02) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(10,12,16,1) 0%, transparent 60%),
+    linear-gradient(180deg, #080a0e 0%, #0d1117 30%, #0a0d12 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  overflow-y: auto;
+}
+
+/* Animated grid background on the canvas */
+#screen-landing .landing-bg { opacity: 0.4; }
+
+/* Hazard stripe — thinner, sharper, more premium */
+#screen-landing .hazard-stripe {
+  height: 3px;
+  opacity: 0.4;
+  background: repeating-linear-gradient(-45deg, #c9a227 0, #c9a227 8px, transparent 8px, transparent 16px);
+}
+
+/* Hero — tighter, more dramatic */
+#screen-landing .landing-hero {
+  padding: 40px 24px 16px;
+  animation: landing-hero-enter 0.8s ease-out;
+}
+@keyframes landing-hero-enter {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bomb SVG — larger, more prominent glow */
+#screen-landing .hero-bomb-svg {
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 40px rgba(240,136,62,0.15));
+}
+#screen-landing .hero-bomb-svg svg {
+  width: 140px; height: 163px;
+}
+
+/* Title — bolder with layered glow */
+#screen-landing .game-title {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 72px;
+  letter-spacing: 10px;
+  color: #e6edf3;
+  text-shadow:
+    0 0 40px rgba(240,136,62,0.35),
+    0 0 80px rgba(240,136,62,0.15),
+    0 0 120px rgba(240,136,62,0.08),
+    0 4px 8px rgba(0,0,0,0.6);
+  position: relative;
+}
+#screen-landing .game-title .amp {
+  color: #f0883e;
+  text-shadow:
+    0 0 20px rgba(240,136,62,0.6),
+    0 0 40px rgba(240,136,62,0.3);
+}
+
+/* Tagline — Oswald, military stencil feel */
+#screen-landing .tagline {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 8px;
+  color: rgba(230,237,243,0.35);
+  text-transform: uppercase;
+  margin-top: 12px;
+}
+
+/* Divider — subtler, wider */
+#screen-landing .hero-divider {
+  width: 280px;
+  height: 2px;
+  margin: 24px auto 0;
+  background: linear-gradient(90deg, transparent, rgba(201,162,39,0.4), transparent);
+  opacity: 1;
+  border-radius: 0;
+}
+
+/* Panels — wider, more breathing room */
+#screen-landing .landing-panels {
+  max-width: 1080px;
+  gap: 40px;
+  padding: 0 32px 48px;
+  animation: landing-panels-enter 0.6s ease-out 0.2s both;
+}
+@keyframes landing-panels-enter {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Action card — glassmorphism with stronger presence */
+#screen-landing .action-card {
+  background: rgba(13,17,23,0.7);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-left: 3px solid var(--accent-orange);
+  border-radius: 16px;
+  padding: 32px 28px 24px;
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 4px 30px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.03) inset;
+  overflow: visible;
+}
+
+/* CLASSIFIED watermark — subtler */
+#screen-landing .action-card::after {
+  font-size: 60px;
+  color: rgba(240,136,62,0.02);
+  letter-spacing: 12px;
+}
+
+/* Callsign label — JetBrains Mono */
+#screen-landing .form-group label {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--accent-orange);
+  opacity: 0.6;
+}
+
+/* Input fields — darker, sharper */
+#screen-landing input[type="text"] {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #e6edf3;
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 15px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#screen-landing input[type="text"]:focus {
+  border-color: rgba(240,136,62,0.4);
+  box-shadow: 0 0 0 3px rgba(240,136,62,0.1), 0 0 20px rgba(240,136,62,0.05);
+  outline: none;
+}
+#screen-landing input[type="text"]::placeholder {
+  color: rgba(255,255,255,0.15);
+  font-family: 'JetBrains Mono', var(--font-mono);
+}
+
+/* DEPLOY button — more dramatic */
+#screen-landing .btn-deploy {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 6px;
+  padding: 16px 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f0883e, #e06820);
+  border: none;
+  color: #000;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+#screen-landing .btn-deploy::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+#screen-landing .btn-deploy:hover:not(:disabled)::before {
+  transform: translateX(100%);
+}
+#screen-landing .btn-deploy:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f5a050, #f0883e);
+  box-shadow: 0 0 30px rgba(240,136,62,0.3), 0 4px 12px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
+}
+#screen-landing .btn-deploy:disabled {
+  background: rgba(240,136,62,0.15);
+  color: rgba(0,0,0,0.3);
+  border: 1px solid rgba(240,136,62,0.1);
+}
+
+/* Join section — cleaner */
+#screen-landing .divider-line {
+  color: rgba(255,255,255,0.15);
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+#screen-landing .divider-line span {
+  background: rgba(13,17,23,0.7);
+}
+#screen-landing .join-section-label {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 4px;
+}
+#screen-landing .join-row {
+  display: flex; gap: 8px; width: 100%;
+}
+#screen-landing .join-row input {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 22px;
+  letter-spacing: 8px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  flex: 1; min-width: 0;
+}
+#screen-landing .join-row .btn {
+  flex-shrink: 0;
+}
+
+/* Extra buttons — subtler */
+#screen-landing .landing-extra-buttons {
+  margin-top: 16px;
+}
+#screen-landing .landing-extra-buttons .btn-link {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.3);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+#screen-landing .landing-extra-buttons .btn-link:hover {
+  color: var(--accent-orange);
+}
+
+/* Scoreboard — darker glass */
+#screen-landing .landing-scoreboard {
+  background: rgba(13,17,23,0.6);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+#screen-landing .scoreboard-header {
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 20px 24px 16px;
+}
+#screen-landing .scoreboard-title {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: rgba(255,255,255,0.7);
+}
+#screen-landing .scoreboard-subtitle {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* Top corner buttons — more refined */
+#screen-landing .btn-music-toggle,
+#screen-landing .btn-fullscreen,
+#screen-landing .btn-settings {
+  background: rgba(13,17,23,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s ease;
+}
+#screen-landing .btn-music-toggle:hover,
+#screen-landing .btn-fullscreen:hover,
+#screen-landing .btn-settings:hover {
+  background: rgba(240,136,62,0.1);
+  border-color: rgba(240,136,62,0.3);
+}
+
+/* ══════════════════════ FLIP MODE — RAINBOW BUTTON ══════════════════════ */
+.btn-diff-flip {
+  position: relative; overflow: hidden;
+  background: rgba(13,17,23,0.6) !important;
+}
+.btn-diff-flip::before {
+  content: '';
+  position: absolute; inset: -2px;
+  background: conic-gradient(from 0deg, #ff0040, #ff8000, #ffff00, #00ff40, #00ffff, #0080ff, #8000ff, #ff0080, #ff0040);
+  border-radius: inherit;
+  z-index: -1;
+  animation: flip-rainbow-spin 3s linear infinite;
+}
+.btn-diff-flip::after {
+  content: '';
+  position: absolute; inset: 2px;
+  background: rgba(13,17,23,0.9);
+  border-radius: inherit;
+  z-index: -1;
+}
+@keyframes flip-rainbow-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.btn-diff-flip strong {
+  background: linear-gradient(90deg, #ff4040, #ff8000, #ffdd00, #00cc44, #00bbff, #8844ff, #ff44aa);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: flip-text-shimmer 2s linear infinite;
+}
+@keyframes flip-text-shimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+.btn-diff-flip.active {
+  border-color: transparent !important;
+  box-shadow: 0 0 20px rgba(255,100,50,0.2), 0 0 40px rgba(100,200,255,0.1);
+}
+.btn-diff-flip span {
+  color: rgba(255,255,255,0.5) !important;
+}
+
+/* ══════════════════════ FLIP MODE — ROLE SWAP OVERLAY ══════════════════════ */
+.flip-swap-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  animation: flip-overlay-in 0.3s ease-out;
+}
+.flip-swap-overlay.hidden { display: none; }
+@keyframes flip-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.flip-swap-text {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 48px; letter-spacing: 6px; color: #fff;
+  text-shadow: 0 0 30px rgba(255,100,50,0.4), 0 0 60px rgba(100,200,255,0.2);
+  animation: flip-swap-slam 0.5s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+@keyframes flip-swap-slam {
+  0% { transform: scale(2.5); opacity: 0; filter: blur(8px); }
+  60% { transform: scale(0.95); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1); }
+}
+.flip-swap-role {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 28px; letter-spacing: 8px; margin-top: 12px;
+  text-transform: uppercase;
+}
+.flip-swap-role.role-executor { color: var(--accent-orange); }
+.flip-swap-role.role-instructor { color: var(--accent-blue); }
+
+/* ══════════════════════ LOBBY — REDESIGN ══════════════════════ */
+
+#screen-lobby {
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(88,166,255,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(10,12,16,1) 0%, transparent 60%),
+    linear-gradient(180deg, #080a0e 0%, #0d1117 40%, #0a0d12 100%);
+}
+
+#screen-lobby .lobby-container {
+  max-width: 720px;
+  padding: 40px 32px;
+  animation: landing-panels-enter 0.5s ease-out;
+}
+
+/* Header — dramatic room code */
+#screen-lobby .lobby-header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+#screen-lobby .lobby-header .game-title-small {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  letter-spacing: 5px;
+  color: rgba(255,255,255,0.5);
+}
+#screen-lobby .room-code-display {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 14px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 2px;
+}
+#screen-lobby .code-highlight {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--accent-orange);
+  letter-spacing: 8px;
+  text-shadow: 0 0 20px rgba(240,136,62,0.3), 0 0 40px rgba(240,136,62,0.1);
+}
+
+/* Section headings */
+#screen-lobby .lobby-body h2 {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Player slots — glass cards */
+#screen-lobby .player-slot {
+  background: rgba(13,17,23,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s ease;
+}
+#screen-lobby .player-slot .player-name {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+#screen-lobby .player-slot .player-role {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.35);
+}
+#screen-lobby .ready-badge {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Role buttons — bold, distinct */
+#screen-lobby .btn-role {
+  background: rgba(13,17,23,0.5);
+  border: 2px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 20px 16px;
+  backdrop-filter: blur(6px);
+  transition: all 0.25s ease;
+}
+#screen-lobby .btn-role:hover {
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+#screen-lobby .btn-role.selected {
+  border-color: rgba(88,166,255,0.4);
+  background: rgba(88,166,255,0.06);
+  box-shadow: 0 0 20px rgba(88,166,255,0.1), 0 4px 12px rgba(0,0,0,0.2);
+}
+#screen-lobby .role-icon { font-size: 36px; margin-bottom: 4px; }
+#screen-lobby .role-name {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+#screen-lobby .role-desc {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 1px;
+}
+
+/* Difficulty buttons — sleek chips */
+#screen-lobby .btn-diff {
+  background: rgba(13,17,23,0.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+#screen-lobby .btn-diff:hover {
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+}
+#screen-lobby .btn-diff.active {
+  border-color: rgba(88,166,255,0.4);
+  background: rgba(88,166,255,0.06);
+  box-shadow: 0 0 12px rgba(88,166,255,0.08);
+}
+#screen-lobby .btn-diff strong {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+#screen-lobby .btn-diff span {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 9px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.5px;
+}
+
+/* Custom settings panel */
+#screen-lobby .custom-settings {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+#screen-lobby .custom-settings h3 {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.4);
+}
+#screen-lobby .custom-settings label {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.35);
+}
+
+/* Ready button — matches Deploy energy */
+#screen-lobby .btn-primary.btn-large {
+  font-family: 'Oswald', 'Impact', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 6px;
+  padding: 16px 48px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3fb950, #2ea043);
+  border: none;
+  color: #000;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+#screen-lobby .btn-primary.btn-large:hover:not(:disabled) {
+  background: linear-gradient(135deg, #56d364, #3fb950);
+  box-shadow: 0 0 30px rgba(63,185,80,0.25);
+  transform: translateY(-1px);
+}
+#screen-lobby .btn-primary.btn-large:disabled {
+  background: rgba(63,185,80,0.12);
+  color: rgba(0,0,0,0.3);
+}
+
+/* Footer */
+#screen-lobby .lobby-footer {
+  border-top: 1px solid rgba(255,255,255,0.04);
+  padding-top: 20px;
+}
+#screen-lobby .lobby-footer .status-text {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.25);
+}
+#screen-lobby .lobby-footer-links .btn-link {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+/* Copy button */
+#screen-lobby .btn-tiny {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
 /* ══════════════════════ SCREENS ══════════════════════ */
 .screen {
   display: none;

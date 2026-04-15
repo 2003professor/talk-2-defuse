@@ -181,7 +181,7 @@ function generateBomb(difficulty, customSettings) {
     hasLitFRK, hasLitCAR, hasLitBOB,
     casingTheme, casingTexture, stencilLabels, modelNumber,
     modules: [],
-    timer: isCustom ? customSettings.timer : difficulty === 'easy' ? 300 : difficulty === 'medium' ? 240 : difficulty === 'flip' ? 300 : 180,
+    timer: isCustom ? customSettings.timer : difficulty === 'easy' ? 300 : difficulty === 'medium' ? 240 : difficulty === 'flip' ? 300 : 300,
     maxStrikes: isCustom ? customSettings.maxStrikes : 3,
     strikes: 0,
     sequenceEnforcement: isCustom ? customSettings.sequenceEnforcement : true,
@@ -1976,7 +1976,7 @@ function endGame(code, room, won, reason) {
   if (room.timerTimeout) { clearTimeout(room.timerTimeout); room.timerTimeout = null; }
 
   const totalTime = room.difficulty === 'custom' && room.customSettings ? room.customSettings.timer
-    : ({ easy: 300, medium: 240, hard: 180 }[room.difficulty] || 300);
+    : ({ easy: 300, medium: 240, hard: 300 }[room.difficulty] || 300);
   const score = calculateScore(won, room.bomb.timer, room.bomb.strikes, room.difficulty, totalTime);
   const modulesSolved = room.bomb.modules.filter(m => m.solved).length;
   const totalModules = room.bomb.modules.length;

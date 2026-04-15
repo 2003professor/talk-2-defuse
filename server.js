@@ -1250,6 +1250,7 @@ io.on('connection', (socket) => {
     if (!room) return cb({ error: 'Room not found.' });
     if (room.players.length >= 2) return cb({ error: 'Room is full.' });
     if (room.state !== 'lobby') return cb({ error: 'Game already in progress.' });
+    if (room.players.some(p => p.name.toLowerCase() === playerName.toLowerCase())) return cb({ error: 'That name is already taken in this room.' });
     // Auto-assign the remaining role if first player already chose one
     const firstPlayer = room.players[0];
     let autoRole = null;

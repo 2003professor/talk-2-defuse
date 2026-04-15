@@ -12,6 +12,8 @@ const VoiceChat = (() => {
   let isConnected = false;
   let isInitiator = false;
   let connectTimeout = null;
+  let remoteDescSet = false;
+  let iceCandidateQueue = [];
 
   const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -30,6 +32,7 @@ const VoiceChat = (() => {
     document.body.appendChild(remoteAudio);
 
     socket.on('voice-offer', async ({ sdp }) => {
+      console.log('[Voice] Received offer');
       try {
         // Receiver also needs mic access for two-way audio
         if (!localStream) {
@@ -38,36 +41,59 @@ const VoiceChat = (() => {
             const audioTrack = localStream.getAudioTracks()[0];
             if (audioTrack) audioTrack.enabled = mode === 'open-mic' && !isMuted;
           } catch (micErr) {
-            console.warn('Receiver mic access denied — one-way audio only:', micErr);
+            console.warn('[Voice] Receiver mic access denied — one-way audio only:', micErr);
           }
         }
         await createPeerConnection();
         await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+        remoteDescSet = true;
+        // Flush queued ICE candidates
+        while (iceCandidateQueue.length > 0) {
+          const c = iceCandidateQueue.shift();
+          await peerConnection.addIceCandidate(new RTCIceCandidate(c));
+        }
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         socket.emit('voice-answer', { sdp: peerConnection.localDescription });
+        console.log('[Voice] Sent answer');
         updateUI();
-      } catch (e) { console.warn('Voice offer handling failed:', e); }
+      } catch (e) { console.warn('[Voice] Offer handling failed:', e); }
     });
 
     socket.on('voice-answer', async ({ sdp }) => {
+      console.log('[Voice] Received answer');
       try {
-        if (peerConnection) await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
-      } catch (e) { console.warn('Voice answer handling failed:', e); }
+        if (!peerConnection) return;
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+        remoteDescSet = true;
+        // Flush queued ICE candidates
+        while (iceCandidateQueue.length > 0) {
+          const c = iceCandidateQueue.shift();
+          await peerConnection.addIceCandidate(new RTCIceCandidate(c));
+        }
+      } catch (e) { console.warn('[Voice] Answer handling failed:', e); }
     });
 
     socket.on('voice-ice', async ({ candidate }) => {
+      if (!candidate) return;
+      // Queue if peer connection isn't ready or remote description not set yet
+      if (!peerConnection || !remoteDescSet) {
+        console.log('[Voice] Queuing ICE candidate (remote desc not set yet)');
+        iceCandidateQueue.push(candidate);
+        return;
+      }
       try {
-        if (peerConnection && candidate) await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) { console.warn('ICE candidate failed:', e); }
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) { console.warn('[Voice] ICE candidate failed:', e); }
     });
 
     socket.on('voice-hangup', () => { hangup(true); updateUI(); });
-    socket.on('voice-ready', () => { /* Partner joined, we can start voice if desired */ });
   }
 
   async function createPeerConnection() {
     if (peerConnection) peerConnection.close();
+    remoteDescSet = false;
+    iceCandidateQueue = [];
     peerConnection = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
       iceCandidatePoolSize: 4,
@@ -79,8 +105,8 @@ const VoiceChat = (() => {
     };
 
     peerConnection.ontrack = (e) => {
+      console.log('[Voice] Received remote track');
       remoteAudio.srcObject = e.streams[0];
-      // Set up voice activity detection on remote stream — reuse AudioContext
       try {
         if (audioCtx) { audioCtx.close().catch(() => {}); }
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -93,6 +119,7 @@ const VoiceChat = (() => {
     };
 
     peerConnection.onconnectionstatechange = () => {
+      if (!peerConnection) return;
       const state = peerConnection.connectionState;
       console.log('[Voice] Connection state:', state);
       isConnected = state === 'connected';
@@ -105,12 +132,8 @@ const VoiceChat = (() => {
     };
 
     peerConnection.oniceconnectionstatechange = () => {
-      const iceState = peerConnection.iceConnectionState;
-      console.log('[Voice] ICE state:', iceState);
-      // ICE restart on disconnected state
-      if (iceState === 'disconnected') {
-        console.log('[Voice] ICE disconnected, waiting for recovery...');
-      }
+      if (!peerConnection) return;
+      console.log('[Voice] ICE state:', peerConnection.iceConnectionState);
     };
 
     if (localStream) {
@@ -121,7 +144,6 @@ const VoiceChat = (() => {
   async function startCall() {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      // Apply initial mute/PTT state
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = mode === 'open-mic' && !isMuted;
@@ -133,6 +155,7 @@ const VoiceChat = (() => {
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit('voice-offer', { sdp: peerConnection.localDescription });
+      console.log('[Voice] Sent offer');
       // 30s timeout — TURN relay can take a while
       connectTimeout = setTimeout(() => {
         if (!isConnected && peerConnection) {
@@ -143,7 +166,7 @@ const VoiceChat = (() => {
       }, 30000);
       updateUI();
     } catch (e) {
-      console.warn('Microphone access denied or failed:', e);
+      console.warn('[Voice] Microphone access denied or failed:', e);
       showVoiceError('Microphone access denied');
     }
   }
@@ -155,6 +178,8 @@ const VoiceChat = (() => {
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
     isConnected = false;
     isInitiator = false;
+    remoteDescSet = false;
+    iceCandidateQueue = [];
     if (!remote) socket.emit('voice-hangup');
     updateUI();
   }

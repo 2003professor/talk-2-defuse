@@ -647,6 +647,10 @@ document.getElementById('btn-ready').addEventListener('click', () => {
 
 socket.on('lobby-update', (state) => {
   renderLobbyPlayers(state);
+  // Auto-start voice chat when partner joins
+  if (state.players.length === 2 && !VoiceChat.hasStream) {
+    VoiceChat.startCall();
+  }
   document.querySelectorAll('.btn-diff').forEach(b => b.classList.toggle('active', b.dataset.diff === state.difficulty));
   const customPanel = document.getElementById('custom-settings');
   if (state.difficulty === 'custom') {

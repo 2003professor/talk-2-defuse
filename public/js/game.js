@@ -533,6 +533,7 @@ document.getElementById('btn-copy-code').addEventListener('click', () => {
 });
 
 document.getElementById('btn-leave-lobby').addEventListener('click', () => {
+  VoiceChat.hangup();
   socket.disconnect();
   socket.connect();
   showScreen('landing');
@@ -2407,6 +2408,7 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
 document.getElementById('btn-change-difficulty').addEventListener('click', () => {
   if (isSoloMode) {
     exitSoloMode();
+    VoiceChat.hangup();
     socket.disconnect();
     socket.connect();
     showScreen('landing');
@@ -4150,6 +4152,7 @@ document.getElementById('btn-exit-game').addEventListener('click', () => {
   manualData = null;
   // Close magnifier if open
   if (magActive) { magActive = false; magnifier.classList.add('hidden'); }
+  VoiceChat.hangup();
   socket.disconnect();
   socket.connect();
   showScreen('landing');

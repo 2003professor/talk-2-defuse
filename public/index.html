@@ -448,6 +448,10 @@
               <span class="role-desc">See the bomb, follow instructions</span>
             </button>
           </div>
+          <div id="switch-request-area" class="switch-request-area hidden">
+            <button id="btn-request-switch" class="btn btn-link btn-switch">🔄 Request Role Switch</button>
+            <span id="switch-status" class="switch-status"></span>
+          </div>
 
           <h2>Difficulty</h2>
           <div class="difficulty-select">
@@ -601,6 +605,11 @@
 
       <!-- Main Area (split) -->
       <div class="game-main">
+        <!-- Parallax background layers -->
+        <div class="parallax-far" id="parallax-far"></div>
+        <div class="parallax-mid" id="parallax-mid"></div>
+        <!-- Dust particles -->
+        <canvas class="dust-canvas" id="dust-canvas"></canvas>
         <!-- Faux-3D Lighting Overlay -->
         <div class="lighting-overlay" id="lighting-overlay"></div>
         <!-- Left: Bomb / Manual -->
@@ -681,6 +690,8 @@
     <div class="explosion-drip drip-6"></div>
     <div class="explosion-drip drip-7"></div>
   </div>
+
+  <!-- PEN TOOL REMOVED — annotations now use inline toolbar -->
 
   <!-- ══════════════════════ MAGNIFYING GLASS ══════════════════════ -->
   <div id="magnifier" class="magnifier hidden">

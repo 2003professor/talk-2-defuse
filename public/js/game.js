@@ -117,9 +117,17 @@ function showScreen(name) {
     const mag = document.getElementById('magnifier');
     if (mag) mag.classList.add('hidden');
   }
-  // Timer urgency cleanup
-  const gm = document.querySelector('.game-main');
-  if (gm && name !== 'game') { gm.classList.remove('timer-urgent', 'timer-critical'); }
+  // Cleanup game effects when leaving
+  if (name !== 'game') {
+    const gm = document.querySelector('.game-main');
+    if (gm) gm.classList.remove('timer-urgent', 'timer-critical', 'timer-critical-pulse');
+    stopDust();
+    stopFuseSparks();
+    AudioFX.stopRoomAmbience();
+    resetAllAnnotations();
+    window._executorRendered = false;
+    Object.keys(redactionCache).forEach(k => delete redactionCache[k]);
+  }
 
   // Cinematic transition
   const prevScreen = screens[prev];
@@ -370,6 +378,11 @@ function renderSoloView() {
 
   // Auto-show magnifier for solo
   if (!magActive) toggleMagnifier();
+  // Annotations + page effects for solo
+  applyRedactions();
+  applyPageDamage();
+  showAnnoWrapper();
+  setupAnnoCanvas();
 
   document.querySelectorAll('.manual-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -531,10 +544,19 @@ document.getElementById('btn-leave-lobby').addEventListener('click', () => {
 
 document.querySelectorAll('.btn-role').forEach(btn => {
   btn.addEventListener('click', () => {
+    // If this role is taken by the partner, flash the switch button instead
+    if (btn.classList.contains('role-taken')) {
+      const switchBtn = document.getElementById('btn-request-switch');
+      if (switchBtn) {
+        switchBtn.classList.add('glow-hint');
+        setTimeout(() => switchBtn.classList.remove('glow-hint'), 1500);
+      }
+      showToast('This role is taken — request a switch below!');
+      return;
+    }
     document.querySelectorAll('.btn-role').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     socket.emit('select-role', { role: btn.dataset.role });
-    document.getElementById('btn-ready').disabled = false;
     AudioFX.click();
   });
 });
@@ -632,16 +654,39 @@ socket.on('lobby-update', (state) => {
   } else {
     customPanel.classList.add('hidden');
   }
-  // Reset Ready button if conditions aren't met (so player can re-ready after changes)
+  // Ready button: only enabled when 2 players, both have roles, and I have a role
   const me = state.players.find(p => p.name === myName);
   const readyBtn = document.getElementById('btn-ready');
-  if (me && me.ready && state.players.length === 2 && state.players.every(p => p.role) &&
-      state.players.some(p => p.role === 'instructor') && state.players.some(p => p.role === 'executor')) {
-    // All good — keep waiting
-  } else if (me && !me.ready) {
+  const hasPartner = state.players.length === 2;
+  const iHaveRole = me && me.role;
+  const bothHaveRoles = hasPartner && state.players.every(p => p.role);
+  const validRoles = state.players.some(p => p.role === 'instructor') && state.players.some(p => p.role === 'executor');
+
+  if (me && me.ready) {
+    readyBtn.disabled = true;
+    readyBtn.textContent = 'Waiting...';
+  } else if (hasPartner && iHaveRole && bothHaveRoles && validRoles) {
     readyBtn.disabled = false;
     readyBtn.textContent = 'Ready';
+  } else {
+    readyBtn.disabled = true;
+    readyBtn.textContent = hasPartner ? 'Choose Roles' : 'Waiting for partner...';
   }
+
+  // Show switch request button when both roles are assigned
+  const switchArea = document.getElementById('switch-request-area');
+  if (switchArea) {
+    switchArea.classList.toggle('hidden', !(hasPartner && bothHaveRoles && validRoles));
+  }
+
+  // Highlight assigned role and mark the other as taken ONLY if partner exists
+  const partner2 = hasPartner ? state.players.find(p => p.name !== myName) : null;
+  document.querySelectorAll('.btn-role').forEach(b => {
+    const isMyRole = me && b.dataset.role === me.role;
+    const isTaken = partner2 && partner2.role && partner2.role === b.dataset.role;
+    b.classList.toggle('selected', isMyRole);
+    b.classList.toggle('role-taken', !!isTaken && !isMyRole);
+  });
 });
 
 function renderLobbyPlayers(state) {
@@ -667,7 +712,66 @@ function renderLobbyPlayers(state) {
 
 socket.on('role-error', ({ message }) => {
   showToast(message);
-  document.querySelectorAll('.btn-role').forEach(b => b.classList.remove('selected'));
+});
+
+// ── Role Switch System ──
+document.getElementById('btn-request-switch').addEventListener('click', () => {
+  socket.emit('request-switch');
+  AudioFX.click();
+});
+
+socket.on('switch-pending', ({ message }) => {
+  const status = document.getElementById('switch-status');
+  if (status) status.textContent = message;
+});
+
+socket.on('switch-error', ({ message }) => {
+  showToast(message);
+  const btn = document.getElementById('btn-request-switch');
+  if (btn) { btn.disabled = true; btn.textContent = 'No more switches'; }
+});
+
+socket.on('switch-request', ({ from, remaining }) => {
+  // Show incoming switch request
+  const switchArea = document.getElementById('switch-request-area');
+  if (!switchArea) return;
+  // Remove any existing incoming request
+  const old = switchArea.querySelector('.switch-incoming');
+  if (old) old.remove();
+
+  const div = document.createElement('div');
+  div.className = 'switch-incoming';
+  div.innerHTML = `
+    <p><strong>${esc(from)}</strong> wants to switch roles. Accept?</p>
+    <div class="switch-btns">
+      <button class="btn-accept">Accept</button>
+      <button class="btn-decline">Decline</button>
+    </div>
+  `;
+  switchArea.appendChild(div);
+  AudioFX.radioClick();
+
+  div.querySelector('.btn-accept').addEventListener('click', () => {
+    socket.emit('switch-response', { accepted: true });
+    div.remove();
+  });
+  div.querySelector('.btn-decline').addEventListener('click', () => {
+    socket.emit('switch-response', { accepted: false });
+    div.remove();
+  });
+});
+
+socket.on('switch-accepted', () => {
+  showToast('Roles switched!');
+  const status = document.getElementById('switch-status');
+  if (status) status.textContent = '';
+});
+
+socket.on('switch-declined', () => {
+  showToast('Switch request declined.');
+  const status = document.getElementById('switch-status');
+  if (status) status.textContent = 'Partner declined.';
+  setTimeout(() => { if (status) status.textContent = ''; }, 3000);
 });
 
 // ══════════════════════ BRIEFING ══════════════════════
@@ -921,8 +1025,15 @@ function renderExecutorView() {
   html += '</div></div>';
   content.innerHTML = html;
   attachExecutorListeners();
-  // Faux-3D: animate modules in
-  animateModuleEntrance();
+  // Faux-3D: animate modules in (only on first render, not updates)
+  if (!window._executorRendered) {
+    window._executorRendered = true;
+    animateModuleEntrance();
+    // Phase 6: start ambient effects
+    initDust();
+    startFuseSparks();
+    AudioFX.startRoomAmbience();
+  }
 }
 
 function renderModule(mod, mi) {
@@ -1363,14 +1474,20 @@ function renderInstructorView() {
     html += `<button class="manual-tab${currentManualTab === tab ? ' active' : ''}" data-tab="${tab}">${label}</button>`;
   });
   html += '</div>';
-  html += '<div class="manual-search"><input type="text" id="manual-search-input" placeholder="Search manual..." autocomplete="off"><button id="btn-book-guide" class="btn btn-tiny manual-guide-btn" title="Manual Guide">📋 Guide</button></div>';
+  html += '<div class="manual-search"><input type="text" id="manual-search-input" placeholder="Search manual..." autocomplete="off"></div>';
   html += `<div class="manual-body" id="manual-body">${renderManualTab(currentManualTab)}</div>`;
   html += '</div>';
   content.innerHTML = html;
 
-  document.getElementById('btn-book-guide').addEventListener('click', () => { startBookGuide(); AudioFX.click(); });
+  // Book guide removed — unified guide triggered from topbar
   // Auto-show magnifier for instructor
   if (!magActive) toggleMagnifier();
+  // Apply initial redactions and page damage
+  applyRedactions();
+  applyPageDamage();
+  // Show annotation pen button (outside the book, fixed right side)
+  showAnnoWrapper();
+  setupAnnoCanvas();
 
   document.querySelectorAll('.manual-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1598,7 +1715,9 @@ function renderManualTab(tab) {
     html += '<table class="bomb-index-table"><thead><tr><th>Serial</th><th>Protocol</th><th>Shape</th><th>Size</th><th>Indicators</th><th>Batt</th><th>Ports</th><th>Modules</th></tr></thead><tbody>';
     manualData.bombIndex.forEach(entry => {
       const protoClass = `protocol-cell protocol-cell-${entry.protocol.toLowerCase()}`;
-      html += `<tr><td><strong>${esc(entry.serial)}</strong></td><td><span class="${protoClass}">${entry.protocol}</span></td><td>${cap(entry.shape)}</td><td>${cap(entry.size)}</td><td class="small-text">${esc(entry.indicators)}</td><td>${entry.batteries}</td><td class="small-text">${esc(entry.ports)}</td><td class="small-text">${entry.modules.map(cap).join(', ')}</td></tr>`;
+      const r = entry.redacted || [];
+      const rc = (field, val) => r.includes(field) ? '<span class="redacted-perm">██████</span>' : val;
+      html += `<tr><td><strong>${esc(entry.serial)}</strong></td><td><span class="${protoClass}">${entry.protocol}</span></td><td>${rc('shape', cap(entry.shape))}</td><td>${rc('size', cap(entry.size))}</td><td class="small-text">${rc('indicators', esc(entry.indicators))}</td><td>${rc('batteries', entry.batteries)}</td><td class="small-text">${rc('ports', esc(entry.ports))}</td><td class="small-text">${entry.modules.map(cap).join(', ')}</td></tr>`;
     });
     html += '</tbody></table>';
     html += `<div class="page-number">PG ${pageNum}</div>`;
@@ -1995,6 +2114,11 @@ socket.on('game-update', (data) => {
     showToast(`${cap(data.moduleType)} module defused!`);
     addSystemMessage(`Module solved: ${cap(data.moduleType)}`);
     flashLighting('green', 500);
+    // Find which module was solved and trigger effects
+    if (bombState) {
+      const mi = bombState.modules.findIndex(m => m.type === data.moduleType && m.solved);
+      if (mi >= 0) triggerSolvePulse(mi);
+    }
   }
   if (data.event === 'simon-stage-complete') {
     showToast(`Simon Says: Stage ${data.stage} complete!`);
@@ -2056,6 +2180,7 @@ function updateTimer(s, speed) {
   if (gm) {
     gm.classList.toggle('timer-urgent', s <= 30 && s > 10);
     gm.classList.toggle('timer-critical', s <= 10);
+    gm.classList.toggle('timer-critical-pulse', s <= 10);
   }
 }
 
@@ -2687,6 +2812,284 @@ function hideReconnectOverlay() {
   if (overlay) overlay.classList.add('hidden');
 }
 
+// ══════════════════════ INSTRUCTOR: REDACTED TEXT ══════════════════════
+const redactionCache = {}; // { tabName: redacted innerHTML }
+
+function applyRedactions() {
+  const body = document.getElementById('manual-body');
+  if (!body) return;
+
+  // If we already have cached redactions for this tab, restore them
+  if (redactionCache[currentManualTab]) {
+    body.innerHTML = redactionCache[currentManualTab];
+    return;
+  }
+  const safeWords = ['cut','press','hold','wire','button','red','blue','yellow','green','white','black','orange','purple',
+    'first','last','second','third','fourth','fifth','position','label','serial','batteries','indicators','ports','protocol',
+    'alpha','bravo','charlie','wires','keypad','simon','morse','memory','maze','password','knob',
+    'if','then','otherwise','not','and','or','the','a','is','are','has','have','more','than','no','when',
+    'strike','module','stage','display','frequency','column','pattern','vowel','odd','even',
+    'shell','halls','slick','trick','boxes','leaks','strobe','bistro','flick','bombs','break','brick',
+    'steak','sting','vector','beats','mhz','release','timer','countdown','lit','indicator',
+    'about','after','again','below','could','every','first','found','great','house','large','learn',
+    'never','other','place','plant','point','right','small','sound','spell','still','study','their',
+    'there','these','thing','think','three','water','where','which','world','would','write',
+    'press','abort','detonate','hold','triangle','circle','star','lightning',
+    'up','down','left','right',
+    'says','strip','pressed','number','contains','strikes','solve','solved',
+    'order','sequence','same','only','count','type','color','colors','matching',
+    'look','find','match','check','verify','identify','read','note','important',
+    'critical','warning','proceed','follow','apply','use','using','rules','rule'];
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      // Skip text inside tables, SVGs, code elements, and image containers
+      const parent = node.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (parent.closest('table, svg, code, .morse-dict-table, .bomb-index-table, .strike-ref-table, .nato-table, .simon-table, .password-word-table, .keypad-columns-grid, .knob-pattern-table, .wire-legend, .wire-swatch, img, .mc_visual, .mc_code')) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+  let redactCount = 0;
+  const maxRedact = 8 + Math.floor(Math.random() * 6); // 8-13 redactions per page
+  textNodes.forEach(node => {
+    if (redactCount >= maxRedact) return;
+    const text = node.textContent;
+    if (text.trim().length < 5) return;
+    const words = text.split(/(\s+)/);
+    let changed = false;
+    const newParts = words.map(w => {
+      if (redactCount >= maxRedact) return w;
+      if (w.trim().length < 3 || /^\s+$/.test(w)) return w;
+      const lower = w.toLowerCase().replace(/[^a-z]/g, '');
+      if (safeWords.includes(lower)) return w;
+      // Protect numbers, frequencies, codes, symbols, short words
+      if (/\d/.test(w)) return w; // contains any digit
+      if (/[→←↑↓●○■★△♪☀♠♥♦♣□☆⚡○✓]/.test(w)) return w; // symbols
+      if (w.length <= 3) return w; // too short
+      if (Math.random() > 0.06) return w; // ~6% chance per eligible word
+      redactCount++;
+      return `<span class="redacted" title="Click to reveal">${w}</span>`;
+    });
+    if (redactCount > 0 && newParts.some(p => p.includes('redacted'))) {
+      const span = document.createElement('span');
+      span.innerHTML = newParts.join('');
+      node.parentNode.replaceChild(span, node);
+    }
+  });
+
+  // Cache the redacted HTML for this tab
+  redactionCache[currentManualTab] = body.innerHTML;
+}
+
+// ══════════════════════ INSTRUCTOR: TORN/DAMAGED PAGES ══════════════════════
+function applyPageDamage() {
+  const body = document.getElementById('manual-body');
+  if (!body) return;
+  body.style.position = 'relative';
+  // Random chance of each damage type
+  if (Math.random() < 0.3) body.classList.add('page-torn-corner');
+  if (Math.random() < 0.25) body.classList.add('page-burn-edge');
+  // Scorch mark
+  if (Math.random() < 0.35) {
+    const scorch = document.createElement('div');
+    scorch.className = 'page-scorch';
+    scorch.style.top = (20 + Math.random() * 50) + '%';
+    scorch.style.left = (10 + Math.random() * 60) + '%';
+    scorch.style.transform = `rotate(${Math.random() * 360}deg)`;
+    body.appendChild(scorch);
+  }
+  // Tear line
+  if (Math.random() < 0.3) {
+    const tear = document.createElement('div');
+    tear.className = 'page-tear-line';
+    tear.style.top = (30 + Math.random() * 40) + '%';
+    body.appendChild(tear);
+  }
+}
+
+// ══════════════════════ INSTRUCTOR: ANNOTATION SYSTEM ══════════════════════
+let annoActive = false;
+let annoDrawing = false;
+let annoColor = '#f85149';
+let annoIsEraser = false;
+let annoCanvas = null;
+let annoCtx = null;
+const annoPageData = {}; // { tabName: imageDataURL } — persists per page
+let annoWrapperEl = null;
+
+function showAnnoWrapper() {
+  // If old wrapper exists but was detached from DOM (re-render), discard it
+  if (annoWrapperEl && !annoWrapperEl.parentElement) { annoWrapperEl = null; }
+  if (annoWrapperEl) { annoWrapperEl.classList.remove('hidden'); return; }
+  const manualContainer = document.querySelector('.manual-container');
+  if (!manualContainer) return;
+  manualContainer.style.position = 'relative';
+  manualContainer.style.overflow = 'visible';
+
+  annoWrapperEl = document.createElement('div');
+  annoWrapperEl.className = 'anno-wrapper';
+  annoWrapperEl.id = 'anno-wrapper';
+  annoWrapperEl.innerHTML = `
+    <button class="anno-toggle-btn" id="anno-toggle" title="Annotations">✏️</button>
+    <div class="anno-palette" id="anno-palette">
+      <button class="anno-btn anno-color active" data-color="#f85149" style="background:#f85149" title="Red"></button>
+      <button class="anno-btn anno-color" data-color="#58a6ff" style="background:#58a6ff" title="Blue"></button>
+      <button class="anno-btn anno-color" data-color="#3fb950" style="background:#3fb950" title="Green"></button>
+      <button class="anno-btn anno-color" data-color="#d29922" style="background:#d29922" title="Yellow"></button>
+      <button class="anno-btn anno-color" data-color="#1a1a1a" style="background:#1a1a1a" title="Black"></button>
+      <div class="anno-divider"></div>
+      <button class="anno-btn anno-eraser" data-color="erase" title="Eraser"></button>
+      <div class="anno-divider"></div>
+      <button class="anno-btn anno-clear" data-action="clear" title="Clear this page">✕</button>
+    </div>
+  `;
+  manualContainer.appendChild(annoWrapperEl);
+
+  // Toggle button
+  annoWrapperEl.querySelector('#anno-toggle').addEventListener('click', () => {
+    const palette = annoWrapperEl.querySelector('#anno-palette');
+    const btn = annoWrapperEl.querySelector('#anno-toggle');
+    if (annoActive) {
+      // Close
+      annoActive = false;
+      palette.classList.remove('open');
+      btn.classList.remove('active');
+      if (annoCanvas) { saveAnnoPage(); annoCanvas.classList.remove('drawing'); }
+    } else {
+      // Open
+      annoActive = true;
+      palette.classList.add('open');
+      btn.classList.add('active');
+      setupAnnoCanvas();
+      if (annoCanvas) annoCanvas.classList.add('drawing');
+    }
+    AudioFX.click();
+  });
+
+  // Colors
+  annoWrapperEl.querySelectorAll('.anno-color').forEach(btn => {
+    btn.addEventListener('click', () => {
+      annoWrapperEl.querySelectorAll('.anno-color, .anno-eraser').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      annoIsEraser = false;
+      annoColor = btn.dataset.color;
+    });
+  });
+
+  // Eraser
+  annoWrapperEl.querySelector('.anno-eraser').addEventListener('click', function() {
+    annoWrapperEl.querySelectorAll('.anno-color, .anno-eraser').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    annoIsEraser = true;
+  });
+
+  // Clear
+  annoWrapperEl.querySelector('[data-action="clear"]').addEventListener('click', () => {
+    clearAnnoPage();
+    AudioFX.click();
+  });
+}
+
+function hideAnnoWrapper() {
+  if (annoWrapperEl) annoWrapperEl.classList.add('hidden');
+  annoActive = false;
+}
+
+function setupAnnoCanvas() {
+  const body = document.getElementById('manual-body');
+  if (!body) return;
+  body.style.position = 'relative';
+
+  // Remove old canvas
+  const old = body.querySelector('.ink-canvas');
+  if (old) {
+    // Save before removing
+    saveAnnoPage();
+    old.remove();
+  }
+
+  // Create canvas sized to the full scrollable content
+  annoCanvas = document.createElement('canvas');
+  annoCanvas.className = 'ink-canvas';
+  annoCanvas.width = body.clientWidth;
+  annoCanvas.height = Math.max(body.scrollHeight, body.clientHeight, 800);
+  body.appendChild(annoCanvas);
+  annoCtx = annoCanvas.getContext('2d');
+
+  // Restore saved annotations for this specific tab
+  const savedData = annoPageData[currentManualTab];
+  if (savedData) {
+    const img = new Image();
+    img.onload = () => { if (annoCtx) annoCtx.drawImage(img, 0, 0); };
+    img.src = savedData;
+  }
+
+  // Drawing events
+  annoCanvas.onmousedown = (e) => {
+    if (!annoActive) return;
+    annoDrawing = true;
+    const r = annoCanvas.getBoundingClientRect();
+    annoCtx.beginPath();
+    annoCtx.moveTo(e.clientX - r.left, e.clientY - r.top);
+  };
+  annoCanvas.onmousemove = (e) => {
+    if (!annoDrawing || !annoActive) return;
+    const r = annoCanvas.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    if (annoIsEraser) {
+      annoCtx.clearRect(x - 15, y - 15, 30, 30);
+    } else {
+      annoCtx.lineWidth = 2.5;
+      annoCtx.lineCap = 'round';
+      annoCtx.lineJoin = 'round';
+      annoCtx.strokeStyle = annoColor;
+      annoCtx.globalAlpha = 0.8;
+      annoCtx.lineTo(x, y);
+      annoCtx.stroke();
+      annoCtx.globalAlpha = 1;
+    }
+  };
+  annoCanvas.onmouseup = () => { annoDrawing = false; saveAnnoPage(); };
+  annoCanvas.onmouseleave = () => { annoDrawing = false; saveAnnoPage(); };
+
+  if (annoActive) annoCanvas.classList.add('drawing');
+}
+
+function saveAnnoPage() {
+  saveAnnoPageAs(currentManualTab);
+}
+
+function saveAnnoPageAs(tabName) {
+  if (!annoCanvas || !annoCtx || !tabName) return;
+  try {
+    // Only save if there's actual drawn content (not a blank canvas)
+    const data = annoCanvas.toDataURL();
+    annoPageData[tabName] = data;
+  } catch(_) {}
+}
+
+function clearAnnoPage() {
+  if (annoCtx && annoCanvas) {
+    annoCtx.clearRect(0, 0, annoCanvas.width, annoCanvas.height);
+    delete annoPageData[currentManualTab];
+  }
+}
+
+function resetAllAnnotations() {
+  Object.keys(annoPageData).forEach(k => delete annoPageData[k]);
+  annoActive = false;
+  annoDrawing = false;
+  annoCanvas = null;
+  annoCtx = null;
+  hideAnnoWrapper();
+}
+
 // ══════════════════════ MAGNIFYING GLASS ══════════════════════
 const magnifier = document.getElementById('magnifier');
 const magnifierLens = document.getElementById('magnifier-lens');
@@ -2752,20 +3155,34 @@ function updateMagZoom() {
     overflow: visible;
   `;
 
-  // Fix scroll offsets in all scrollable children
+  // Fix scroll offsets and copy canvas data
   const origEls = gameMain.querySelectorAll('*');
   const cloneEls = clone.querySelectorAll('*');
   for (let i = 0; i < origEls.length; i++) {
-    if (origEls[i].scrollTop > 0 || origEls[i].scrollLeft > 0) {
-      const ce = cloneEls[i];
-      if (ce) {
-        ce.style.overflow = 'visible';
-        // Wrap children in an offset container
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = `position:relative;top:${-origEls[i].scrollTop}px;left:${-origEls[i].scrollLeft}px;`;
-        while (ce.firstChild) wrapper.appendChild(ce.firstChild);
-        ce.appendChild(wrapper);
-      }
+    const orig = origEls[i];
+    const ce = cloneEls[i];
+    if (!ce) continue;
+
+    // Copy canvas pixel data (cloneNode doesn't copy canvas content)
+    if (orig.tagName === 'CANVAS' && orig.width > 0 && orig.height > 0) {
+      try {
+        ce.width = orig.width;
+        ce.height = orig.height;
+        const ctx = ce.getContext('2d');
+        if (ctx) ctx.drawImage(orig, 0, 0);
+      } catch(_) {}
+    }
+
+    // Fix scroll offsets — wrap children in offset container (not transform on parent)
+    if (orig.scrollTop > 0 || orig.scrollLeft > 0) {
+      const scrollT = orig.scrollTop;
+      const scrollL = orig.scrollLeft;
+      // Only offset the content children, not the element itself
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `margin-top:${-scrollT}px;margin-left:${-scrollL}px;`;
+      while (ce.firstChild) wrapper.appendChild(ce.firstChild);
+      ce.appendChild(wrapper);
+      ce.style.overflow = 'hidden';
     }
   }
 
@@ -2832,12 +3249,21 @@ function flipManualPage(newTab, prevTab) {
   const outClass = goingForward ? 'page-out-left' : 'page-out-right';
   const inClass = goingForward ? 'page-in-right' : 'page-in-left';
 
+  // Save annotations for the OLD page before flipping
+  saveAnnoPageAs(prevTab || currentManualTab);
+
   body.classList.add(outClass);
   setTimeout(() => {
     body.scrollTop = 0;
     body.innerHTML = renderManualTab(newTab);
-    body.classList.remove(outClass);
+    body.classList.remove(outClass, 'page-torn-corner', 'page-burn-edge');
+    body.querySelectorAll('.page-scorch,.page-tear-line').forEach(el => el.remove());
     body.classList.add(inClass);
+    // Apply instructor effects
+    applyRedactions();
+    applyPageDamage();
+    // Restore annotation canvas for the new page (with that page's saved data)
+    setupAnnoCanvas();
     setTimeout(() => { body.classList.remove(inClass); isFlipping = false; }, 350);
   }, 230);
 }
@@ -3274,6 +3700,54 @@ function playSoloIntro() {
   introTimeout = _t[_t.length - 1];
 }
 
+// ══════════════════════ KEYBOARD PAGE NAVIGATION ══════════════════════
+document.addEventListener('keydown', (e) => {
+  // Only when manual is visible and chat input not focused
+  if (!manualData) return;
+  if (document.activeElement === document.getElementById('chat-input')) return;
+  if (document.activeElement === document.getElementById('manual-search-input')) return;
+  if (isFlipping) return;
+
+  // Scroll up/down with W/S or ArrowUp/ArrowDown
+  const isUp = e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W';
+  const isDown = e.key === 'ArrowDown' || e.key === 's' || e.key === 'S';
+  if (isUp || isDown) {
+    const body = document.getElementById('manual-body');
+    if (body) {
+      e.preventDefault();
+      body.scrollBy({ top: isDown ? 120 : -120, behavior: 'smooth' });
+    }
+    return;
+  }
+
+  const isLeft = e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A';
+  const isRight = e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D';
+  if (!isLeft && !isRight) return;
+
+  // Build the list of visible tabs
+  const tabBtns = document.querySelectorAll('.manual-tab');
+  if (tabBtns.length === 0) return;
+  const tabNames = Array.from(tabBtns).map(b => b.dataset.tab);
+  const currentIdx = tabNames.indexOf(currentManualTab);
+  if (currentIdx === -1) return;
+
+  let newIdx;
+  if (isRight) {
+    newIdx = currentIdx + 1;
+    if (newIdx >= tabNames.length) return; // already on last tab
+  } else {
+    newIdx = currentIdx - 1;
+    if (newIdx < 0) return; // already on first tab
+  }
+
+  e.preventDefault();
+  const prevTab = currentManualTab;
+  currentManualTab = tabNames[newIdx];
+  tabBtns.forEach(t => t.classList.toggle('active', t.dataset.tab === currentManualTab));
+  flipManualPage(currentManualTab, prevTab);
+  AudioFX.click();
+});
+
 // ══════════════════════ FAUX-3D: MOUSE TRACKING & EFFECTS ══════════════════════
 const gameMain = document.querySelector('.game-main');
 const gameContent = document.getElementById('game-content');
@@ -3290,11 +3764,35 @@ if (gameMain) {
       lightingOverlay.style.setProperty('--mx', mx.toFixed(3));
       lightingOverlay.style.setProperty('--my', my.toFixed(3));
     }
+    // Parallax layers
+    const pFar = document.getElementById('parallax-far');
+    const pMid = document.getElementById('parallax-mid');
+    if (pFar) { pFar.style.transform = `translate(${mx * -8}px, ${my * -5}px)`; }
+    if (pMid) { pMid.style.transform = `translate(${mx * -15}px, ${my * -10}px)`; }
+    // Module shadow parallax
+    document.querySelectorAll('.module-panel').forEach(p => {
+      p.style.setProperty('--shadow-x', (mx * 4) + 'px');
+      p.style.setProperty('--shadow-y', (my * 3) + 'px');
+    });
+    // Manual shadow parallax
+    const manual = document.querySelector('.manual-container');
+    if (manual) {
+      manual.style.setProperty('--book-sx', (mx * 6) + 'px');
+      manual.style.setProperty('--book-sy', (my * 4) + 'px');
+    }
   });
 
   gameMain.addEventListener('mouseleave', () => {
     gameContent.style.setProperty('--mx', '0');
     gameContent.style.setProperty('--my', '0');
+  });
+
+  // Resize dust canvas
+  window.addEventListener('resize', () => {
+    if (dustCanvas && dustCtx && dustCanvas.parentElement) {
+      dustCanvas.width = dustCanvas.parentElement.clientWidth;
+      dustCanvas.height = dustCanvas.parentElement.clientHeight;
+    }
   });
 }
 
@@ -3431,6 +3929,129 @@ function resetMagCracks() {
   magCrackLevel = 0;
 }
 
+// ══════════════════════ PHASE 6: DUST PARTICLES ══════════════════════
+const dustCanvas = document.getElementById('dust-canvas');
+let dustCtx = null;
+let dustParticles = [];
+let dustAnimId = null;
+
+function initDust() {
+  if (!dustCanvas) return;
+  const parent = dustCanvas.parentElement;
+  if (!parent) return;
+  dustCanvas.width = parent.clientWidth;
+  dustCanvas.height = parent.clientHeight;
+  dustCtx = dustCanvas.getContext('2d');
+  dustParticles = [];
+  for (let i = 0; i < 20; i++) {
+    dustParticles.push({
+      x: Math.random() * dustCanvas.width,
+      y: Math.random() * dustCanvas.height,
+      size: 1 + Math.random() * 2.5,
+      speedX: (Math.random() - 0.5) * 0.3,
+      speedY: -0.1 - Math.random() * 0.2,
+      opacity: 0.05 + Math.random() * 0.12,
+    });
+  }
+  if (!dustAnimId) dustAnimLoop();
+}
+
+function dustAnimLoop() {
+  if (!dustCtx || !dustCanvas.width) return;
+  dustCtx.clearRect(0, 0, dustCanvas.width, dustCanvas.height);
+  dustParticles.forEach(p => {
+    p.x += p.speedX;
+    p.y += p.speedY;
+    if (p.y < -10) { p.y = dustCanvas.height + 10; p.x = Math.random() * dustCanvas.width; }
+    if (p.x < -10) p.x = dustCanvas.width + 10;
+    if (p.x > dustCanvas.width + 10) p.x = -10;
+    dustCtx.beginPath();
+    dustCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    dustCtx.fillStyle = `rgba(200,200,180,${p.opacity})`;
+    dustCtx.fill();
+  });
+  dustAnimId = requestAnimationFrame(dustAnimLoop);
+}
+
+function stopDust() {
+  if (dustAnimId) { cancelAnimationFrame(dustAnimId); dustAnimId = null; }
+}
+
+// ══════════════════════ PHASE 6: FUSE SPARK PARTICLES ══════════════════════
+let fuseSparkInterval = null;
+
+function startFuseSparks() {
+  stopFuseSparks();
+  fuseSparkInterval = setInterval(() => {
+    const fuseGlow = document.querySelector('.fuse-glow-outer');
+    if (!fuseGlow) return;
+    const rect = fuseGlow.getBoundingClientRect();
+    const contentRect = document.getElementById('game-content')?.getBoundingClientRect();
+    if (!contentRect) return;
+    for (let i = 0; i < 3; i++) {
+      const spark = document.createElement('div');
+      spark.style.cssText = `
+        position: fixed; z-index: 50; pointer-events: none;
+        width: ${2 + Math.random() * 3}px; height: ${2 + Math.random() * 3}px;
+        border-radius: 50%;
+        background: hsl(${30 + Math.random() * 20}, 100%, ${60 + Math.random() * 30}%);
+        box-shadow: 0 0 4px hsl(30, 100%, 60%);
+        left: ${rect.left + rect.width / 2 + (Math.random() - 0.5) * 8}px;
+        top: ${rect.top + rect.height / 2}px;
+        transition: all ${0.4 + Math.random() * 0.6}s ease-out;
+      `;
+      document.body.appendChild(spark);
+      requestAnimationFrame(() => {
+        spark.style.left = (parseFloat(spark.style.left) + (Math.random() - 0.5) * 30) + 'px';
+        spark.style.top = (parseFloat(spark.style.top) + 10 + Math.random() * 25) + 'px';
+        spark.style.opacity = '0';
+      });
+      setTimeout(() => spark.remove(), 1000);
+    }
+  }, 200);
+}
+
+function stopFuseSparks() {
+  if (fuseSparkInterval) { clearInterval(fuseSparkInterval); fuseSparkInterval = null; }
+}
+
+// ══════════════════════ PHASE 6: MODULE CONFETTI ══════════════════════
+function spawnConfetti(moduleEl) {
+  if (!moduleEl) return;
+  const rect = moduleEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const colors = ['#3fb950', '#58a6ff', '#d29922', '#f0883e', '#bc8cff', '#e6edf3'];
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-particle';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 100;
+    p.style.cssText = `
+      left: ${cx}px; top: ${cy}px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      width: ${4 + Math.random() * 5}px; height: ${3 + Math.random() * 4}px;
+      --tx: ${Math.cos(angle) * dist}px;
+      --ty: ${Math.sin(angle) * dist - 40}px;
+      --rot: ${Math.random() * 720 - 360}deg;
+      --dur: ${0.6 + Math.random() * 0.6}s;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '1px'};
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1500);
+  }
+}
+
+// ══════════════════════ PHASE 6: SOLVE PULSE ══════════════════════
+function triggerSolvePulse(moduleIndex) {
+  const panel = document.querySelector(`.module-panel[data-module="${moduleIndex}"]`);
+  if (panel) {
+    panel.classList.add('solve-pulse');
+    spawnConfetti(panel);
+    setTimeout(() => panel.classList.remove('solve-pulse'), 600);
+  }
+}
+
 // ══════════════════════ FAUX-3D: MODULE ENTRANCE ══════════════════════
 function animateModuleEntrance() {
   const panels = document.querySelectorAll('.module-panel');
@@ -3478,32 +4099,38 @@ document.getElementById('btn-exit-game').addEventListener('click', () => {
 // ══════════════════════ UNIFIED SPOTLIGHT GUIDE ══════════════════════
 const EXECUTOR_GUIDE = [
   { target: '#game-timer', title: 'Timer', text: 'Your countdown. Hits zero = explosion. Strikes speed it up — watch for the orange "x1.5" or "x2".' },
-  { target: '#game-strikes', title: 'Strikes', text: 'Wrong actions add strikes (✕). Too many = game over. Each strike speeds up the timer and skips time.' },
+  { target: '#game-strikes', title: 'Strikes', text: 'Wrong actions add strikes (✕). Too many = game over. Each strike also speeds up the timer and skips time.' },
   { target: '.module-panel', title: 'Bomb Modules', text: 'Each panel is a module to defuse. Red LED = unsolved, green = done. Click wires, buttons, keys, etc. to interact.' },
-  { target: '.chat-panel', title: 'Chat & Voice', text: 'Talk to your partner here. Use quick phrases above the input for speed, or click 🎤 Call for voice chat.' },
   { target: '.bomb-info-plate, .device-id-plate', title: 'Bomb Info', text: 'Serial number, shape, batteries, indicators, ports. READ THESE to your Instructor — they need them to find the right manual page.' },
+  { target: '.chat-panel', title: 'Chat & Voice', text: 'Talk to your partner here. Use quick phrases for speed, or click 🎤 Call for voice chat. Hold Spacebar for push-to-talk.' },
+  { target: '#magnifier', title: 'Magnifying Glass', text: 'Drag the magnifying glass to zoom into any area. Works on everything. Press Escape to dismiss.' },
+];
+
+const INSTRUCTOR_GUIDE = [
+  { target: '#game-timer', title: 'Timer', text: 'Your partner\'s countdown. When it hits zero, the bomb explodes. Keep them focused!' },
+  { target: '#game-strikes', title: 'Strikes', text: 'Wrong actions add strikes. Too many = game over. Strikes speed up the timer too.' },
+  { target: '.manual-cover-header', title: 'The Defusal Manual', text: 'Your only resource. You can\'t see the bomb — your partner must describe it. You read the rules and tell them what to do.' },
+  { target: '.manual-tabs', title: 'Manual Tabs', text: 'The manual is split into tabs. Start with <strong>Index</strong> to identify the bomb, then use module tabs for defusal rules. Use <strong>A/D</strong> or <strong>← →</strong> arrow keys to flip pages.' },
+  { target: '.manual-body', switchTab: 'index', title: '① Index — Start Here', text: 'Ask your partner for the serial, shape, size, batteries, indicators, and ports. Match them in this table to find the <strong>Protocol</strong> (Alpha/Bravo/Charlie). Watch for decoys!' },
+  { target: '.manual-body', switchTab: 'sequence', title: '② Sequence', text: 'Modules must be solved in a specific order. Check this BEFORE starting — wrong order = strike + timer speedup.' },
+  { target: '.manual-body', switchTab: 'wires', title: '③ Module Rules', text: 'Each module has its own tab. For protocol-dependent modules (Wires, Button, Memory, Knob), find the right Protocol section. Others are universal.' },
+  { target: '.manual-body', switchTab: 'appendix', title: '④ Appendix', text: 'NATO phonetic alphabet, indicator codes, port guide, strike effects. Quick reference when you need it.' },
+  { target: '.manual-search', title: 'Search', text: 'Type to search across all tabs — serial numbers, module names, anything. Fastest lookup under pressure.' },
+  { target: '.chat-panel', title: 'Chat & Voice', text: 'Communicate here. Use quick phrases for speed, or 🎤 Call for voice. Hold Spacebar for push-to-talk.' },
+  { target: '.anno-wrapper', title: 'Annotations', text: 'Click ✏️ to draw on the manual — circle info, write notes, underline rules. Pick colors from the palette. Annotations persist per page.' },
+  { target: '#magnifier', title: 'Magnifying Glass', text: 'Drag the magnifying glass to zoom into any area. Works on the manual, bomb, chat — everything. Press Escape to dismiss.' },
 ];
 
 const SOLO_GUIDE = [
-  { target: '.solo-bomb-info', title: 'Bomb Info', text: 'Serial number, shape, size, batteries, indicators, and ports. You need these to look up the bomb in the <strong>Index</strong> tab and find the correct <strong>Protocol</strong>.' },
-  { target: '.module-panel', title: 'Modules', text: 'These are the modules you need to defuse. Red LED = unsolved. Click wires, buttons, keys, etc. to interact. Solve them all to win!' },
-  { target: '#game-timer', title: 'Timer', text: 'Your countdown — when it hits zero, the bomb explodes. You get extra time in practice mode.' },
-  { target: '#game-strikes', title: 'Strikes', text: 'Wrong actions add strikes (✕). Too many = game over. On Hard, strikes also speed up the timer.' },
-  { target: '.manual-tabs', title: 'Manual Tabs', text: 'The manual has all the defusal rules. Click tabs to navigate between sections.' },
-  { target: '.manual-body', switchTab: 'index', title: '① Look Up the Bomb', text: 'Start here! Match the serial, shape, size, batteries, indicators, and ports to find your bomb. The <strong>Protocol</strong> column tells you which rules to use.' },
-  { target: '.manual-body', switchTab: 'wires', title: '② Read Module Rules', text: 'Each module tab has defusal rules. For protocol-dependent modules (Wires, Button, Memory, Knob), find the section matching your Protocol. Others are the same for all protocols.' },
-  { target: '.manual-body', switchTab: 'appendix', title: '③ Appendix', text: 'Quick reference for NATO alphabet, indicator codes, and port types. Handy when you\'re stuck.' },
-];
-
-const BOOK_GUIDE = [
-  { target: '.manual-cover-header', title: 'The Defusal Manual', text: 'Your only resource. It has everything to defuse the bomb — but you can\'t see the bomb. Your partner must describe it.' },
-  { target: '.manual-tabs', title: 'Navigation Tabs', text: 'Click tabs to switch sections. Start with <strong>Index</strong> to identify the bomb. Let\'s walk through each one.' },
-  { target: '.manual-body', switchTab: 'index', title: '① Index — START HERE', text: 'This table lists every possible bomb. Ask your partner for serial, shape, size, batteries, indicators, ports. Match to find the <strong>Protocol</strong> (Alpha/Bravo/Charlie). Watch for decoys with the same serial!' },
-  { target: '.manual-body', switchTab: 'procedures', title: '② Procedures', text: 'How to communicate, what to do on strikes, and the assessment checklist. Read this once to know the process.' },
-  { target: '.manual-body', switchTab: 'sequence', title: '③ Sequence', text: 'Modules must be solved in a specific order based on battery count + serial last digit. Wrong order = strike + timer speedup. Check this BEFORE you start any module!' },
-  { target: '.manual-body', switchTab: 'wires', title: '④ Module: Wires', text: 'Each module type has its own tab with defusal rules. For <strong>protocol-dependent</strong> modules like Wires, find the section matching your bomb\'s Protocol (Alpha, Bravo, or Charlie).' },
-  { target: '.manual-body', switchTab: 'appendix', title: '⑤ Appendix', text: 'Quick reference: NATO phonetic alphabet (for spelling serials), indicator codes, port identification, and strike effects.' },
-  { target: '.manual-search', title: 'Search', text: 'Type anything to search across all tabs — serial numbers, module names, words. Fastest way to find info under pressure.' },
+  { target: '#game-timer', title: 'Timer', text: 'Your countdown — hits zero = explosion. You get extra time in practice mode.' },
+  { target: '#game-strikes', title: 'Strikes', text: 'Wrong actions add strikes (✕). Too many = game over.' },
+  { target: '.solo-bomb-info', title: 'Bomb Info', text: 'Serial, shape, size, batteries, indicators, ports. Use these to look up the bomb in the Index tab.' },
+  { target: '.module-panel', title: 'Modules', text: 'Defuse all modules to win. Red LED = unsolved, green = done. Click to interact.' },
+  { target: '.manual-tabs', title: 'Manual', text: 'All defusal rules are here. Start with <strong>Index</strong> to find your bomb\'s Protocol. Use <strong>A/D</strong> or <strong>← →</strong> to flip pages.' },
+  { target: '.manual-body', switchTab: 'index', title: '① Look Up the Bomb', text: 'Match serial, shape, batteries etc. to find the Protocol. Then use module tabs for the rules.' },
+  { target: '.manual-body', switchTab: 'wires', title: '② Module Rules', text: 'Each module tab has defusal rules. Protocol-dependent modules need the matching Protocol section.' },
+  { target: '.anno-wrapper', title: 'Annotations', text: 'Click ✏️ to draw on the manual. Circle things, write notes. Annotations persist per page.' },
+  { target: '#magnifier', title: 'Magnifying Glass', text: 'Drag to zoom into any area. Press Escape to dismiss.' },
 ];
 
 let _guideSteps = [];
@@ -3590,12 +4217,12 @@ document.getElementById('guide-dimmer').addEventListener('click', _closeSpotligh
 // Topbar button → context-aware guide
 document.getElementById('btn-guide-ingame').addEventListener('click', () => {
   if (isSoloMode) openSpotlightGuide(SOLO_GUIDE);
+  else if (myRole === 'instructor') openSpotlightGuide(INSTRUCTOR_GUIDE);
   else openSpotlightGuide(EXECUTOR_GUIDE);
   AudioFX.click();
 });
 
-// Book guide is triggered from the 📋 Guide button inside the manual (added in renderInstructorView)
-function startBookGuide() { openSpotlightGuide(BOOK_GUIDE); }
+// Book guide merged into INSTRUCTOR_GUIDE — single unified guide per role
 
 // ══════════════════════ INTERACTIVE TUTORIAL ══════════════════════
 const TUTORIAL_STEPS = [

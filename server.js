@@ -698,6 +698,51 @@ function generateManual(bomb) {
   }
   manual.bombIndex = shuffle(manual.bombIndex);
 
+  // ── Redact some index cells for extra challenge ──
+  // Rules: never redact Protocol. Real bomb must remain uniquely identifiable.
+  const redactableFields = ['shape', 'size', 'indicators', 'batteries', 'ports'];
+  const realEntry = manual.bombIndex.find(e =>
+    e.serial === bomb.serial && e.protocol === bomb.protocol &&
+    e.shape === bomb.shape && e.size === bomb.size
+  );
+
+  // Redact 1-3 fields on each DECOY entry
+  manual.bombIndex.forEach(entry => {
+    if (entry === realEntry) return; // skip real bomb for now
+    const numRedact = 1 + Math.floor(Math.random() * 2); // 1-2 fields
+    const fieldsToRedact = shuffle([...redactableFields]).slice(0, numRedact);
+    if (!entry.redacted) entry.redacted = [];
+    fieldsToRedact.forEach(f => entry.redacted.push(f));
+  });
+
+  // Redact 1 field on the real bomb entry — but verify it's still unique
+  if (realEntry) {
+    const candidates = shuffle([...redactableFields]);
+    for (const field of candidates) {
+      // Temporarily redact this field and check uniqueness
+      const testRedacted = [field];
+      // Check if real bomb is still distinguishable from all decoys
+      const isUnique = manual.bombIndex.every(entry => {
+        if (entry === realEntry) return true;
+        // Compare all non-redacted fields between real and this decoy
+        const fieldsToCompare = ['serial', 'protocol', 'shape', 'size', 'indicators', 'batteries', 'ports', 'modules'];
+        return fieldsToCompare.some(f => {
+          if (f === field) return false; // this field is redacted on real bomb
+          if (entry.redacted && entry.redacted.includes(f)) return false; // redacted on decoy too
+          const realVal = String(realEntry[f]);
+          const decoyVal = String(entry[f]);
+          return realVal !== decoyVal;
+        });
+      });
+      if (isUnique) {
+        realEntry.redacted = [field];
+        break;
+      }
+      // If not unique with this field redacted, try next candidate
+    }
+    if (!realEntry.redacted) realEntry.redacted = []; // couldn't safely redact anything
+  }
+
   // ── Overview Chapter (always present) ──────────────────────
   manual.chapters.overview = {
     title: 'Technical Overview',
@@ -1197,9 +1242,17 @@ io.on('connection', (socket) => {
     if (!room) return cb({ error: 'Room not found.' });
     if (room.players.length >= 2) return cb({ error: 'Room is full.' });
     if (room.state !== 'lobby') return cb({ error: 'Game already in progress.' });
-    room.players.push({ id: socket.id, name: playerName, role: null, ready: false, connected: true });
+    // Auto-assign the remaining role if first player already chose one
+    const firstPlayer = room.players[0];
+    let autoRole = null;
+    if (firstPlayer && firstPlayer.role) {
+      autoRole = firstPlayer.role === 'executor' ? 'instructor' : 'executor';
+    }
+    room.players.push({ id: socket.id, name: playerName, role: autoRole, ready: false, connected: true });
     // Reset existing players' ready state when someone new joins
     room.players.forEach(p => { p.ready = false; });
+    // Init switch request tracking
+    if (!room.switchRequests) room.switchRequests = {};
     socket.join(roomCode);
     socket.roomCode = roomCode;
     cb({ success: true });
@@ -1211,14 +1264,63 @@ io.on('connection', (socket) => {
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
+    const partner = room.players.find(p => p.id !== socket.id);
+    // If partner already has a role and both roles are assigned, block direct selection
+    if (partner && partner.role && player.role) {
+      socket.emit('role-error', { message: 'Use the switch request button to swap roles.' });
+      return;
+    }
     if (room.players.some(p => p.id !== socket.id && p.role === role)) {
       socket.emit('role-error', { message: `${role} role is already taken.` });
       return;
     }
     player.role = role;
+    // Auto-assign the other role to the partner if they don't have one
+    if (partner && !partner.role) {
+      partner.role = role === 'executor' ? 'instructor' : 'executor';
+    }
     // Reset all ready states when roles change
     room.players.forEach(p => { p.ready = false; });
     io.to(socket.roomCode).emit('lobby-update', getLobbyState(room));
+  });
+
+  // ── Role Switch Request ──
+  socket.on('request-switch', () => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    const partner = room.players.find(p => p.id !== socket.id);
+    if (!player || !partner || !player.role || !partner.role) return;
+    // Track switch requests per player (max 3)
+    if (!room.switchRequests) room.switchRequests = {};
+    const count = room.switchRequests[socket.id] || 0;
+    if (count >= 3) {
+      socket.emit('switch-error', { message: 'Maximum switch requests reached (3).' });
+      return;
+    }
+    room.switchRequests[socket.id] = count + 1;
+    // Send request to partner
+    io.to(partner.id).emit('switch-request', { from: player.name, remaining: 3 - count - 1 });
+    socket.emit('switch-pending', { message: 'Switch request sent. Waiting for partner...' });
+  });
+
+  socket.on('switch-response', ({ accepted }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    const partner = room.players.find(p => p.id !== socket.id);
+    if (!player || !partner) return;
+    if (accepted) {
+      // Swap roles
+      const temp = player.role;
+      player.role = partner.role;
+      partner.role = temp;
+      room.players.forEach(p => { p.ready = false; });
+      io.to(socket.roomCode).emit('lobby-update', getLobbyState(room));
+      io.to(socket.roomCode).emit('switch-accepted');
+    } else {
+      io.to(partner.id).emit('switch-declined');
+    }
   });
 
   socket.on('select-difficulty', ({ difficulty, customSettings }) => {

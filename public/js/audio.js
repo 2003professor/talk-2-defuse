@@ -465,6 +465,51 @@ const AudioFX = (() => {
       });
     },
 
+    // Room ambience — subtle ventilation hum + distant low rumble
+    _roomAmbienceNodes: null,
+    startRoomAmbience() {
+      if (this._roomAmbienceNodes) return;
+      try {
+        const c = getCtx(); if (!c) return;
+        const t = c.currentTime;
+        // Ventilation hum
+        const vent = c.createOscillator(); vent.type = 'sine'; vent.frequency.value = 100;
+        const ventLFO = c.createOscillator(); ventLFO.type = 'sine'; ventLFO.frequency.value = 0.3;
+        const ventLFOG = c.createGain(); ventLFOG.gain.value = 3;
+        ventLFO.connect(ventLFOG).connect(vent.frequency);
+        const ventLP = c.createBiquadFilter(); ventLP.type = 'lowpass'; ventLP.frequency.value = 150;
+        const ventG = c.createGain(); ventG.gain.setValueAtTime(0, t);
+        ventG.gain.linearRampToValueAtTime(0.012, t + 2);
+        vent.connect(ventLP).connect(ventG).connect(sfxGain);
+        vent.start(t); ventLFO.start(t);
+        // Noise floor
+        const bufLen = c.sampleRate * 2;
+        const buf = c.createBuffer(1, bufLen, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1);
+        const noise = c.createBufferSource(); noise.buffer = buf; noise.loop = true;
+        const nLP = c.createBiquadFilter(); nLP.type = 'lowpass'; nLP.frequency.value = 200;
+        const nG = c.createGain(); nG.gain.setValueAtTime(0, t);
+        nG.gain.linearRampToValueAtTime(0.008, t + 3);
+        noise.connect(nLP).connect(nG).connect(sfxGain);
+        noise.start(t);
+        this._roomAmbienceNodes = { vent, ventLFO, ventG, noise, nG };
+      } catch(_){}
+    },
+    stopRoomAmbience() {
+      if (!this._roomAmbienceNodes) return;
+      try {
+        const c = getCtx(); const t = c.currentTime;
+        const n = this._roomAmbienceNodes;
+        n.ventG.gain.linearRampToValueAtTime(0, t + 1);
+        n.nG.gain.linearRampToValueAtTime(0, t + 1);
+        setTimeout(() => {
+          try { n.vent.stop(); n.ventLFO.stop(); n.noise.stop(); } catch(_){}
+        }, 1200);
+        this._roomAmbienceNodes = null;
+      } catch(_){ this._roomAmbienceNodes = null; }
+    },
+
     // Fuse sizzle — short "tsssss" sound (filtered noise + high sine crackle)
     fuseLit() {
       play((c, dest) => {

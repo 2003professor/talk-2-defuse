@@ -60,7 +60,7 @@ const VoiceChat = (() => {
       } catch (e) { console.warn('ICE candidate failed:', e); }
     });
 
-    socket.on('voice-hangup', () => { hangup(); updateUI(); });
+    socket.on('voice-hangup', () => { hangup(true); updateUI(); });
     socket.on('voice-ready', () => { /* Partner joined, we can start voice if desired */ });
   }
 
@@ -126,12 +126,12 @@ const VoiceChat = (() => {
     }
   }
 
-  function hangup() {
+  function hangup(remote) {
     if (peerConnection) { peerConnection.close(); peerConnection = null; }
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
     isConnected = false;
     isInitiator = false;
-    socket.emit('voice-hangup');
+    if (!remote) socket.emit('voice-hangup');
     updateUI();
   }
 

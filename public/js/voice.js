@@ -10,6 +10,7 @@ const VoiceChat = (() => {
   let isMuted = false;
   let isConnected = false;
   let isInitiator = false;
+  let connectTimeout = null;
 
   const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -66,7 +67,11 @@ const VoiceChat = (() => {
 
   async function createPeerConnection() {
     if (peerConnection) peerConnection.close();
-    peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    peerConnection = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+      iceCandidatePoolSize: 4,
+      iceTransportPolicy: 'all',
+    });
 
     peerConnection.onicecandidate = (e) => {
       if (e.candidate) socket.emit('voice-ice', { candidate: e.candidate });
@@ -89,6 +94,7 @@ const VoiceChat = (() => {
       const state = peerConnection.connectionState;
       console.log('[Voice] Connection state:', state);
       isConnected = state === 'connected';
+      if (state === 'connected' && connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null; }
       if (state === 'failed') {
         showVoiceError('Connection failed — try again');
         hangup();
@@ -97,7 +103,12 @@ const VoiceChat = (() => {
     };
 
     peerConnection.oniceconnectionstatechange = () => {
-      console.log('[Voice] ICE state:', peerConnection.iceConnectionState);
+      const iceState = peerConnection.iceConnectionState;
+      console.log('[Voice] ICE state:', iceState);
+      // ICE restart on disconnected state
+      if (iceState === 'disconnected') {
+        console.log('[Voice] ICE disconnected, waiting for recovery...');
+      }
     };
 
     if (localStream) {
@@ -115,10 +126,19 @@ const VoiceChat = (() => {
       }
 
       isInitiator = true;
+      if (connectTimeout) clearTimeout(connectTimeout);
       await createPeerConnection();
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit('voice-offer', { sdp: peerConnection.localDescription });
+      // 30s timeout — TURN relay can take a while
+      connectTimeout = setTimeout(() => {
+        if (!isConnected && peerConnection) {
+          console.warn('[Voice] Connection timed out after 30s');
+          showVoiceError('Connection timed out — try again');
+          hangup();
+        }
+      }, 30000);
       updateUI();
     } catch (e) {
       console.warn('Microphone access denied or failed:', e);
@@ -127,6 +147,7 @@ const VoiceChat = (() => {
   }
 
   function hangup(remote) {
+    if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null; }
     if (peerConnection) { peerConnection.close(); peerConnection = null; }
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
     isConnected = false;

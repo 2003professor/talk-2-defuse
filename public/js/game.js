@@ -257,7 +257,7 @@ function buildSoloSettings(difficulty, round) {
     maxStrikes: 3,
     wireCount: 3 + Math.floor(Math.random() * 3), // 3-5
     modules,
-    sequenceEnforcement: false,
+    sequenceEnforcement: true,
     strikeSpeedup: difficulty === 'hard',
   };
 }

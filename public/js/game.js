@@ -502,7 +502,7 @@ document.getElementById('screen-landing').addEventListener('click', () => {
 
 // Auto-load scoreboard on connect
 function loadLandingScoreboard() {
-  socket.emit('get-scoreboard', {}, renderScoreboard);
+  renderScoreboard();
 }
 socket.on('connect', loadLandingScoreboard);
 
@@ -648,6 +648,9 @@ document.getElementById('btn-ready').addEventListener('click', () => {
 
 socket.on('lobby-update', (state) => {
   renderLobbyPlayers(state);
+  // Track partner name for leaderboard
+  const partner = state.players.find(p => p.name !== myName);
+  if (partner) window._partnerName = partner.name;
   // Auto-start voice chat — only first player (host) initiates to avoid dual-offer deadlock
   if (state.players.length === 2 && !VoiceChat.hasStream && state.players[0].name === myName) {
     VoiceChat.startCall();
@@ -2390,6 +2393,22 @@ socket.on('game-over', (data) => {
     <div class="result-stat-row"><span class="stat-label">Strikes Used</span><span class="stat-value">${data.strikes} / ${data.maxStrikes}</span></div>
     <div class="result-stat-row"><span class="stat-label">Difficulty</span><span class="stat-value">${cap(data.difficulty)}</span></div>
     <div class="result-stat-row"><span class="stat-label">Score</span><span class="stat-value" style="color:#c9a227;font-family:var(--font-mono)">${data.difficulty === 'custom' ? '--' : (data.score > 0 ? data.score.toLocaleString() : '—')}</span></div>`;
+
+  // Save to localStorage leaderboard (skip solo and custom)
+  if (!isSoloMode && data.difficulty !== 'custom') {
+    saveLocalScore({
+      won: data.won,
+      score: data.score || 0,
+      difficulty: data.difficulty,
+      timeRemaining: data.timeRemaining,
+      strikes: data.strikes,
+      maxStrikes: data.maxStrikes,
+      executor: myRole === 'executor' ? myName : (window._partnerName || 'Partner'),
+      instructor: myRole === 'instructor' ? myName : (window._partnerName || 'Partner'),
+      timestamp: Date.now(),
+    });
+    renderScoreboard();
+  }
 });
 
 document.getElementById('btn-play-again').addEventListener('click', () => {
@@ -2613,8 +2632,33 @@ function showToast(msg) {
 
 socket.on('partner-disconnected', () => { showToast('Partner disconnected.'); addSystemMessage('Partner disconnected.'); });
 
-// ══════════════════════ SCOREBOARD ══════════════════════
-function renderScoreboard(data) {
+// ══════════════════════ SCOREBOARD (localStorage) ══════════════════════
+const SCORES_KEY = 'talk2defuse_scores';
+
+function loadLocalScores() {
+  try { return JSON.parse(localStorage.getItem(SCORES_KEY) || '[]'); } catch { return []; }
+}
+
+function saveLocalScore(record) {
+  const scores = loadLocalScores();
+  scores.push(record);
+  // Keep last 200 entries max
+  if (scores.length > 200) scores.splice(0, scores.length - 200);
+  localStorage.setItem(SCORES_KEY, JSON.stringify(scores));
+}
+
+function getLocalScoreboard() {
+  const scores = loadLocalScores();
+  const wins = scores.filter(s => s.won).sort((a, b) => b.score - a.score).slice(0, 20);
+  const recent = scores.slice(-10).reverse();
+  const totalGames = scores.length;
+  const totalWins = scores.filter(s => s.won).length;
+  const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+  return { wins, recent, stats: { totalGames, totalWins, winRate } };
+}
+
+function renderScoreboard() {
+  const data = getLocalScoreboard();
   const body = document.getElementById('scoreboard-body');
   if (!data || (!data.wins.length && !data.recent.length)) {
     body.innerHTML = '<p class="scoreboard-empty">No games played yet. Be the first!</p>';

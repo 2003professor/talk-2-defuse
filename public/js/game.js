@@ -500,6 +500,32 @@ document.getElementById('screen-landing').addEventListener('click', () => {
   if (settings.musicVolume > 0) AudioFX.menuMusic();
 }, { once: false });
 
+// Seed dummy data if leaderboard is empty
+(function seedDummyScores() {
+  if (loadLocalScores().length > 0) return;
+  const names = ['Ghost', 'Viper', 'Falcon', 'Echo', 'Raven', 'Nova', 'Blitz', 'Shadow', 'Phoenix', 'Cipher', 'Havoc', 'Specter', 'Lynx', 'Titan', 'Pulse'];
+  const diffs = ['easy', 'medium', 'hard', 'flip'];
+  const now = Date.now();
+  const dummy = [];
+  for (let i = 0; i < 30; i++) {
+    const diff = diffs[Math.floor(Math.random() * diffs.length)];
+    const won = Math.random() > 0.35;
+    const timeRem = won ? Math.floor(30 + Math.random() * 300) : 0;
+    const strikes = Math.floor(Math.random() * 3);
+    const mult = { easy: 1, medium: 2, hard: 3, flip: 4 }[diff];
+    const score = won ? Math.max(0, Math.round((1000 + timeRem * 10 - strikes * 200) * mult)) : 0;
+    const e = names[Math.floor(Math.random() * names.length)];
+    let inst = names[Math.floor(Math.random() * names.length)];
+    while (inst === e) inst = names[Math.floor(Math.random() * names.length)];
+    dummy.push({
+      won, score, difficulty: diff, timeRemaining: timeRem,
+      strikes, maxStrikes: 3, executor: e, instructor: inst,
+      timestamp: now - (30 - i) * 3600000 * (1 + Math.random() * 3),
+    });
+  }
+  localStorage.setItem(SCORES_KEY, JSON.stringify(dummy));
+})();
+
 // Auto-load scoreboard on connect
 function loadLandingScoreboard() {
   renderScoreboard();

@@ -2204,10 +2204,11 @@ socket.on('game-update', (data) => {
       });
     });
   }
-  if (data.event === 'sequence-violation') {
-    AudioFX.strike();
-    showToast(data.message || 'Wrong sequence! Strike + time accelerated!');
-    addSystemMessage(data.message || 'Sequence violation! Strike added and timer sped up.');
+  if (data.event === 'sequence-warning') {
+    AudioFX.click();
+    showToast(data.message || 'Wrong order! Check the Sequence tab.');
+    addSystemMessage(data.message || 'Wrong sequence — free pass this time! Check the Sequence tab in the manual.');
+    flashLighting('yellow', 800);
   }
   if (data.event === 'module-solved') {
     AudioFX.success();

@@ -1957,18 +1957,30 @@ function checkSequenceViolation(code, room, moduleIndex) {
     return;
   }
 
+  // Bounds check — all expected modules already accounted for
+  if (bomb.nextSolveIndex >= bomb.solveOrder.length) return;
+
   const expectedIndex = bomb.solveOrder[bomb.nextSolveIndex];
   if (moduleIndex === expectedIndex) {
     // Correct sequence — advance pointer
     bomb.nextSolveIndex++;
   } else {
-    // Wrong sequence — use addStrike for proper strike effects
+    // Wrong sequence
     bomb.nextSolveIndex++;
     // Advance past any already-solved modules
     while (bomb.nextSolveIndex < bomb.solveOrder.length && bomb.modules[bomb.solveOrder[bomb.nextSolveIndex]].solved) {
       bomb.nextSolveIndex++;
     }
-    addStrike(code, room, 'Module solved out of sequence!');
+    // First violation is a free pass with a warning tip
+    if (!bomb._sequenceWarned) {
+      bomb._sequenceWarned = true;
+      emitGameUpdate(code, room, {
+        event: 'sequence-warning',
+        message: 'Wrong order! Check the Sequence tab in the manual to find the correct solve order. This one\'s free — next time it\'s a strike!',
+      });
+    } else {
+      addStrike(code, room, 'Module solved out of sequence!');
+    }
   }
 }
 

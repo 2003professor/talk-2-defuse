@@ -2996,6 +2996,9 @@ function applyRedactions() {
   const body = document.getElementById('manual-body');
   if (!body) return;
 
+  // Only apply redactions on the index page — other pages need to be fully readable
+  if (currentManualTab !== 'index') return;
+
   // If we already have cached redactions for this tab, restore them
   if (redactionCache[currentManualTab]) {
     body.innerHTML = redactionCache[currentManualTab];

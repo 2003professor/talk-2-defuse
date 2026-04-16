@@ -500,6 +500,30 @@ document.getElementById('screen-landing').addEventListener('click', () => {
   if (settings.musicVolume > 0) AudioFX.menuMusic();
 }, { once: false });
 
+// ══════════════════════ SCOREBOARD (localStorage) ══════════════════════
+const SCORES_KEY = 'talk2defuse_scores';
+
+function loadLocalScores() {
+  try { return JSON.parse(localStorage.getItem(SCORES_KEY) || '[]'); } catch { return []; }
+}
+
+function saveLocalScore(record) {
+  const scores = loadLocalScores();
+  scores.push(record);
+  if (scores.length > 200) scores.splice(0, scores.length - 200);
+  localStorage.setItem(SCORES_KEY, JSON.stringify(scores));
+}
+
+function getLocalScoreboard() {
+  const scores = loadLocalScores();
+  const wins = scores.filter(s => s.won).sort((a, b) => b.score - a.score).slice(0, 20);
+  const recent = scores.slice(-10).reverse();
+  const totalGames = scores.length;
+  const totalWins = scores.filter(s => s.won).length;
+  const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+  return { wins, recent, stats: { totalGames, totalWins, winRate } };
+}
+
 // Seed dummy data if leaderboard is empty
 (function seedDummyScores() {
   if (loadLocalScores().length > 0) return;
@@ -2657,31 +2681,6 @@ function showToast(msg) {
 }
 
 socket.on('partner-disconnected', () => { showToast('Partner disconnected.'); addSystemMessage('Partner disconnected.'); });
-
-// ══════════════════════ SCOREBOARD (localStorage) ══════════════════════
-const SCORES_KEY = 'talk2defuse_scores';
-
-function loadLocalScores() {
-  try { return JSON.parse(localStorage.getItem(SCORES_KEY) || '[]'); } catch { return []; }
-}
-
-function saveLocalScore(record) {
-  const scores = loadLocalScores();
-  scores.push(record);
-  // Keep last 200 entries max
-  if (scores.length > 200) scores.splice(0, scores.length - 200);
-  localStorage.setItem(SCORES_KEY, JSON.stringify(scores));
-}
-
-function getLocalScoreboard() {
-  const scores = loadLocalScores();
-  const wins = scores.filter(s => s.won).sort((a, b) => b.score - a.score).slice(0, 20);
-  const recent = scores.slice(-10).reverse();
-  const totalGames = scores.length;
-  const totalWins = scores.filter(s => s.won).length;
-  const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
-  return { wins, recent, stats: { totalGames, totalWins, winRate } };
-}
 
 function renderScoreboard() {
   const data = getLocalScoreboard();

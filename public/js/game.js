@@ -3331,6 +3331,9 @@ function updateMagZoom() {
   zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;';
 
   const clone = gameMain.cloneNode(true);
+  // Remove magnifier and canvas from clone to avoid recursion
+  const cloneMag = clone.querySelector('#magnifier');
+  if (cloneMag) cloneMag.remove();
   clone.style.cssText = `
     position: absolute;
     width: ${gmRect.width}px;

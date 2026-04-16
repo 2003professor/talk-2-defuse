@@ -1948,9 +1948,8 @@ function checkSequenceViolation(code, room, moduleIndex) {
   const bomb = room.bomb;
   if (!bomb.solveOrder || bomb.solveOrder.length <= 1) return;
 
-  // If sequence enforcement is off, just advance the pointer without penalty
+  // If sequence enforcement is off, just advance pointer past solved modules
   if (!bomb.sequenceEnforcement) {
-    bomb.nextSolveIndex++;
     while (bomb.nextSolveIndex < bomb.solveOrder.length && bomb.modules[bomb.solveOrder[bomb.nextSolveIndex]].solved) {
       bomb.nextSolveIndex++;
     }
@@ -1962,16 +1961,13 @@ function checkSequenceViolation(code, room, moduleIndex) {
 
   const expectedIndex = bomb.solveOrder[bomb.nextSolveIndex];
   if (moduleIndex === expectedIndex) {
-    // Correct sequence — advance pointer
+    // Correct sequence — advance pointer, skip past any already-solved
     bomb.nextSolveIndex++;
-  } else {
-    // Wrong sequence
-    bomb.nextSolveIndex++;
-    // Advance past any already-solved modules
     while (bomb.nextSolveIndex < bomb.solveOrder.length && bomb.modules[bomb.solveOrder[bomb.nextSolveIndex]].solved) {
       bomb.nextSolveIndex++;
     }
-    // First violation is a free pass with a warning tip
+  } else {
+    // Wrong sequence — pointer stays, player can still resume correct order
     if (!bomb._sequenceWarned) {
       bomb._sequenceWarned = true;
       emitGameUpdate(code, room, {

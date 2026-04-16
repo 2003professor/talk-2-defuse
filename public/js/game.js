@@ -3318,17 +3318,13 @@ function updateMagZoom() {
   const existing = magnifierLens.querySelector('.mag-zoom');
   if (existing) existing.remove();
 
-  // Use game-main in game, or document body as fallback for landing
-  const gameMain = document.querySelector('.game-main');
-  const source = gameMain || document.documentElement;
-  if (!source) return;
-  const isLanding = !gameMain;
-  const srcRect = source.getBoundingClientRect();
-  // For landing, use viewport dimensions
-  const gw = isLanding ? window.innerWidth : srcRect.width;
-  const gh = isLanding ? window.innerHeight : srcRect.height;
-  const gx = isLanding ? 0 : srcRect.left;
-  const gy = isLanding ? 0 : srcRect.top;
+  // Use game-main in game, or body as fallback (landing page)
+  const gameMain = document.querySelector('.game-main') || document.body;
+  const gmRect = gameMain.getBoundingClientRect();
+  const gw = gameMain === document.body ? window.innerWidth : gmRect.width;
+  const gh = gameMain === document.body ? window.innerHeight : gmRect.height;
+  const gx = gameMain === document.body ? 0 : gmRect.left;
+  const gy = gameMain === document.body ? 0 : gmRect.top;
 
   const relX = cx - gx;
   const relY = cy - gy;
@@ -3337,38 +3333,12 @@ function updateMagZoom() {
   zoomDiv.className = 'mag-zoom';
   zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;';
 
-  if (isLanding) {
-    // For landing: hide the real magnifier from the DOM briefly, take a snapshot-style clone
-    const landingScreen = document.querySelector('#screen-landing.active');
-    if (!landingScreen) return;
-    // Temporarily hide magnifier so it's not in the clone
-    magnifier.style.visibility = 'hidden';
-    const clone = landingScreen.cloneNode(true);
-    magnifier.style.visibility = '';
-    // Remove canvases (can't clone content) and any magnifier remnants
-    clone.querySelectorAll('canvas, #magnifier').forEach(el => el.remove());
-    // Keep the ID so all CSS rules still apply, but make it a positioned child
-    clone.id = 'mag-landing-clone';
-    clone.style.cssText = `
-      position: absolute !important;
-      display: flex !important; flex-direction: column !important;
-      align-items: center !important; justify-content: center !important;
-      width: ${window.innerWidth}px !important; height: ${window.innerHeight}px !important;
-      pointer-events: none; transform-origin: 0 0;
-      transform: scale(${MAG_ZOOM});
-      left: ${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px;
-      top: ${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px;
-      overflow: visible; background: #0a0d12;
-    `;
-    zoomDiv.appendChild(clone);
-    magnifierLens.appendChild(zoomDiv);
-    return;
-  }
-
-  const clone = source.cloneNode(true);
-  // Remove magnifier from clone to avoid recursion
-  const cloneMag = clone.querySelector('#magnifier');
-  if (cloneMag) cloneMag.remove();
+  // Temporarily hide magnifier so it's not cloned
+  magnifier.style.visibility = 'hidden';
+  const clone = gameMain.cloneNode(true);
+  magnifier.style.visibility = '';
+  // Remove magnifier and unrenderable canvases from clone
+  clone.querySelectorAll('#magnifier, .landing-bg').forEach(el => el.remove());
   clone.style.cssText = `
     position: absolute;
     width: ${gw}px;
@@ -3382,7 +3352,7 @@ function updateMagZoom() {
   `;
 
   // Fix scroll offsets and copy canvas data
-  const origEls = source.querySelectorAll('*');
+  const origEls = gameMain.querySelectorAll('*');
   const cloneEls = clone.querySelectorAll('*');
   for (let i = 0; i < origEls.length; i++) {
     const orig = origEls[i];

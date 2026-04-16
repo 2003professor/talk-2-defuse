@@ -840,7 +840,7 @@ input[type="text"].input-error {
   width: 100%;
   padding: 0 24px 40px;
   position: relative;
-  z-index: 1;
+  z-index: 3;
   flex: 1;
   min-height: 0;
   justify-content: center;
@@ -4142,6 +4142,7 @@ body.colorblind .wire-color-black .wire-strand {
   margin-top: 16px; padding: 16px; background: var(--bg-card);
   border: 1px solid var(--bg-hover); border-radius: 10px;
   animation: tutorial-enter 0.25s ease;
+  position: relative; z-index: 10;
 }
 .solo-picker-title {
   font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; text-align: center;

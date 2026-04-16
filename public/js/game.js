@@ -3202,11 +3202,16 @@ function updateMagZoom() {
     if (orig.scrollTop > 0 || orig.scrollLeft > 0) {
       const scrollT = orig.scrollTop;
       const scrollL = orig.scrollLeft;
-      // Only offset the content children, not the element itself
+      // Pull out absolutely-positioned canvases (ink-canvas) before wrapping
+      const absCanvases = Array.from(ce.querySelectorAll('.ink-canvas'));
+      absCanvases.forEach(ac => { ac.remove(); ac.style.top = (-scrollT) + 'px'; });
+      // Wrap remaining children in offset container
       const wrapper = document.createElement('div');
       wrapper.style.cssText = `margin-top:${-scrollT}px;margin-left:${-scrollL}px;`;
       while (ce.firstChild) wrapper.appendChild(ce.firstChild);
       ce.appendChild(wrapper);
+      // Re-add canvases directly on the scrolled element (not in wrapper)
+      absCanvases.forEach(ac => ce.appendChild(ac));
       ce.style.overflow = 'hidden';
     }
   }

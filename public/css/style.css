@@ -2727,6 +2727,11 @@ input[type="text"].input-error {
     0 0 80px rgba(210,153,34,0.2),
     0 0 120px rgba(210,153,34,0.08);
 }
+/* ══════════════════════ LANDING MAGNIFIER CLONE ══════════════════════ */
+#mag-landing-clone .screen { display: flex !important; }
+#mag-landing-clone .landing-hero,
+#mag-landing-clone .landing-panels { opacity: 1 !important; animation: none !important; }
+
 /* ══════════════════════ SEQUENCE WARNING OVERLAY ══════════════════════ */
 .sequence-warning-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;

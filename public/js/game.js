@@ -3338,28 +3338,28 @@ function updateMagZoom() {
   zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;';
 
   if (isLanding) {
-    // For landing: use a screenshot-like approach with fixed background
-    zoomDiv.style.cssText += `
-      background: #0a0d12;
-    `;
-    // Clone just the visible landing content
+    // For landing: hide the real magnifier from the DOM briefly, take a snapshot-style clone
     const landingScreen = document.querySelector('#screen-landing.active');
-    if (!landingScreen) { magnifierLens.appendChild(zoomDiv); return; }
+    if (!landingScreen) return;
+    // Temporarily hide magnifier so it's not in the clone
+    magnifier.style.visibility = 'hidden';
     const clone = landingScreen.cloneNode(true);
-    clone.querySelector('#magnifier')?.remove();
-    clone.querySelector('#landing-bg')?.remove();
-    // Force the clone to render as a flat positioned block
+    magnifier.style.visibility = '';
+    // Remove canvases (can't clone content) and any magnifier remnants
+    clone.querySelectorAll('canvas, #magnifier').forEach(el => el.remove());
+    // Keep the ID so all CSS rules still apply, but make it a positioned child
+    clone.id = 'mag-landing-clone';
     clone.style.cssText = `
-      position: absolute; display: block;
-      width: ${window.innerWidth}px; height: ${window.innerHeight}px;
+      position: absolute !important;
+      display: flex !important; flex-direction: column !important;
+      align-items: center !important; justify-content: center !important;
+      width: ${window.innerWidth}px !important; height: ${window.innerHeight}px !important;
       pointer-events: none; transform-origin: 0 0;
       transform: scale(${MAG_ZOOM});
       left: ${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px;
       top: ${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px;
       overflow: visible; background: #0a0d12;
     `;
-    // Remove duplicate IDs to avoid CSS conflicts
-    clone.removeAttribute('id');
     zoomDiv.appendChild(clone);
     magnifierLens.appendChild(zoomDiv);
     return;

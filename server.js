@@ -1962,19 +1962,13 @@ function checkSequenceViolation(code, room, moduleIndex) {
     // Correct sequence — advance pointer
     bomb.nextSolveIndex++;
   } else {
-    // Wrong sequence — strike + speed up timer
-    bomb.strikes++;
-    room.timerSpeed = (room.timerSpeed || 1) * 1.5;
+    // Wrong sequence — use addStrike for proper strike effects
     bomb.nextSolveIndex++;
-    // Also advance past the out-of-order module in solveOrder so it doesn't trigger again
+    // Advance past any already-solved modules
     while (bomb.nextSolveIndex < bomb.solveOrder.length && bomb.modules[bomb.solveOrder[bomb.nextSolveIndex]].solved) {
       bomb.nextSolveIndex++;
     }
-    if (bomb.strikes >= bomb.maxStrikes) {
-      endGame(code, room, false, 'Too many strikes!');
-      return;
-    }
-    emitGameUpdate(code, room, { event: 'sequence-violation', message: 'Wrong sequence! Strike + time accelerated!' });
+    addStrike(code, room, 'Module solved out of sequence!');
   }
 }
 

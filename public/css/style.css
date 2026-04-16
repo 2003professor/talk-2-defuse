@@ -1343,8 +1343,24 @@ input[type="text"].input-error {
 }
 .briefing-card h2 { text-align: center; margin-bottom: 16px; }
 .briefing-card p { font-size: 15px; margin-bottom: 12px; color: var(--text-dim); }
-.briefing-rules ul { padding-left: 20px; margin-bottom: 24px; }
-.briefing-rules li { font-size: 14px; color: var(--text-dim); margin-bottom: 6px; }
+.briefing-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.briefing-step {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+}
+.briefing-step.step-critical {
+  background: rgba(240,136,62,0.08); border-color: rgba(240,136,62,0.25);
+}
+.step-num {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-orange); color: #000; font-weight: 900; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-critical .step-num { background: #dc3545; color: #fff; }
+.briefing-step div { font-size: 13px; color: var(--text-dim); line-height: 1.4; }
+.briefing-step strong { color: var(--text); }
+.briefing-step em { color: var(--accent-yellow); font-style: normal; }
 .briefing-card .btn { display: block; margin: 0 auto; }
 .briefing-card .status-text { text-align: center; margin-top: 10px; }
 

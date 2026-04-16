@@ -840,10 +840,23 @@ socket.on('go-briefing', () => {
   const sel = document.querySelector('.btn-role.selected');
   myRole = sel ? sel.dataset.role : 'executor';
   const rt = document.getElementById('briefing-role-text');
+  const steps = document.getElementById('briefing-steps');
   if (myRole === 'instructor') {
-    rt.innerHTML = 'You are the <strong style="color:var(--accent-blue)">Instructor</strong>. You have the bomb defusal manual but CANNOT see the bomb. Guide your partner through the chat.';
+    rt.innerHTML = 'You are the <strong style="color:var(--accent-blue)">INSTRUCTOR</strong> — you have the manual but CANNOT see the bomb.';
+    steps.innerHTML = `
+      <div class="briefing-step"><span class="step-num">1</span><div><strong>Listen to the bomb details</strong><br>Your partner will describe: serial number, shape, size, batteries, indicators, and ports.</div></div>
+      <div class="briefing-step step-critical"><span class="step-num">2</span><div><strong>Find the PROTOCOL</strong><br>Open the <em>Index</em> tab and match the bomb details to find the Protocol (Alpha, Bravo, or Charlie). This determines ALL the rules. <strong>Get this right first!</strong></div></div>
+      <div class="briefing-step step-critical"><span class="step-num">3</span><div><strong>Find the SEQUENCE</strong><br>Open the <em>Sequence</em> tab. Use the battery count + serial number to find the correct module solve order. Tell your partner which module to solve first, second, etc. <strong>Wrong order = strike!</strong></div></div>
+      <div class="briefing-step"><span class="step-num">4</span><div><strong>Guide each module</strong><br>For each module, open its tab in the manual, find the rules for your Protocol, and tell your partner exactly what to do.</div></div>
+    `;
   } else {
-    rt.innerHTML = 'You are the <strong style="color:var(--accent-orange)">Executor</strong>. You see the bomb but have NO manual. Describe everything to your partner and follow their instructions.';
+    rt.innerHTML = 'You are the <strong style="color:var(--accent-orange)">EXECUTOR</strong> — you see the bomb but have NO manual.';
+    steps.innerHTML = `
+      <div class="briefing-step step-critical"><span class="step-num">1</span><div><strong>Describe the bomb FIRST</strong><br>Before touching anything, tell your partner: the serial number, shape, size, batteries, indicators, and ports. They need this to find the Protocol.</div></div>
+      <div class="briefing-step step-critical"><span class="step-num">2</span><div><strong>Wait for the PROTOCOL and SEQUENCE</strong><br>Your partner will tell you the Protocol and which module to solve first. <strong>Don't solve modules in the wrong order — it causes a strike!</strong></div></div>
+      <div class="briefing-step"><span class="step-num">3</span><div><strong>Describe each module</strong><br>Tell your partner what you see on each module (wire colors, button label, symbols, etc.) and follow their instructions precisely.</div></div>
+      <div class="briefing-step"><span class="step-num">4</span><div><strong>3 strikes = explosion</strong><br>Wrong actions and wrong sequence both cause strikes. The timer speeds up with each strike.</div></div>
+    `;
   }
 });
 

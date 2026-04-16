@@ -2175,7 +2175,22 @@ function renderManualTab(tab) {
 // ══════════════════════ GAME UPDATES ══════════════════════
 socket.on('game-update', (data) => {
   if (data.timerSpeed) timerSpeed = data.timerSpeed;
-  if (data.bomb) { bombState = data.bomb; if (isSoloMode) renderSoloView(); else renderExecutorView(); }
+  if (data.bomb) {
+    // Save scroll positions before re-render
+    const scrollEls = {};
+    document.querySelectorAll('.game-main, .manual-body, .solo-bomb-section, .solo-manual-section, #game-content').forEach(el => {
+      if (el.scrollTop > 0) scrollEls[el.className || el.id] = el.scrollTop;
+    });
+    bombState = data.bomb;
+    if (isSoloMode) renderSoloView(); else renderExecutorView();
+    // Restore scroll positions
+    requestAnimationFrame(() => {
+      Object.entries(scrollEls).forEach(([key, top]) => {
+        const el = document.querySelector('.' + key) || document.getElementById(key);
+        if (el) el.scrollTop = top;
+      });
+    });
+  }
   if (data.event === 'sequence-violation') {
     AudioFX.strike();
     showToast(data.message || 'Wrong sequence! Strike + time accelerated!');

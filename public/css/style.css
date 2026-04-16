@@ -1323,6 +1323,16 @@ input[type="text"].input-error {
 .diff-custom { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
 
 .lobby-footer { text-align: center; padding-top: 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.lobby-voice-panel {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-bottom: 12px; padding: 8px 16px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+}
+.lobby-voice-panel.hidden { display: none; }
+.lobby-voice-status {
+  font-size: 12px; font-weight: 600; font-family: var(--font-mono);
+}
 .status-text { color: var(--text-dim); font-size: 13px; margin-top: 8px; }
 .lobby-footer-links {
   display: flex; align-items: center; justify-content: center; gap: 12px;

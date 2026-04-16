@@ -592,6 +592,37 @@ document.getElementById('btn-copy-code').addEventListener('click', () => {
   navigator.clipboard.writeText(roomCode).then(() => showToast('Room code copied!'));
 });
 
+// Lobby voice controls
+document.getElementById('lobby-mute-btn').addEventListener('click', () => {
+  VoiceChat.toggleMute();
+  updateLobbyVoiceUI();
+});
+document.getElementById('lobby-mode-btn').addEventListener('click', () => {
+  VoiceChat.setMode(VoiceChat.mode === 'open-mic' ? 'push-to-talk' : 'open-mic');
+  updateLobbyVoiceUI();
+});
+function updateLobbyVoiceUI() {
+  const panel = document.getElementById('lobby-voice-panel');
+  const muteBtn = document.getElementById('lobby-mute-btn');
+  const modeBtn = document.getElementById('lobby-mode-btn');
+  const status = document.getElementById('lobby-voice-status');
+  if (!panel) return;
+  if (VoiceChat.hasStream) {
+    panel.classList.remove('hidden');
+    muteBtn.textContent = VoiceChat.isMuted ? '🔇 Muted' : '🔊 Mic On';
+    modeBtn.textContent = VoiceChat.mode === 'open-mic' ? 'Open Mic' : 'PTT';
+    if (VoiceChat.isConnected) {
+      status.textContent = VoiceChat.mode === 'push-to-talk' ? 'Hold Space to talk' : 'Connected';
+      status.style.color = 'var(--accent-green)';
+    } else {
+      status.textContent = 'Connecting...';
+      status.style.color = 'var(--accent-yellow)';
+    }
+  } else {
+    panel.classList.add('hidden');
+  }
+}
+
 document.getElementById('btn-leave-lobby').addEventListener('click', () => {
   VoiceChat.hangup();
   socket.disconnect();
@@ -715,6 +746,9 @@ socket.on('lobby-update', (state) => {
   if (state.players.length === 2 && !VoiceChat.hasStream && state.players[0].name === myName) {
     VoiceChat.startCall();
   }
+  // Update lobby voice controls (delayed to catch connection state)
+  setTimeout(updateLobbyVoiceUI, 500);
+  setTimeout(updateLobbyVoiceUI, 2000);
   document.querySelectorAll('.btn-diff').forEach(b => b.classList.toggle('active', b.dataset.diff === state.difficulty));
   const customPanel = document.getElementById('custom-settings');
   if (state.difficulty === 'custom') {

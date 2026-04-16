@@ -1301,7 +1301,7 @@ function attachExecutorListeners() {
         buttonHoldModule = mi;
         stripColor = null;
         socket.emit('button-hold', { moduleIndex: mi });
-        renderExecutorView();
+        if (isSoloMode) renderSoloView(); else renderExecutorView();
         holdTimer = null;
       }, 600);
     });
@@ -1314,7 +1314,7 @@ function attachExecutorListeners() {
       } else if (isHoldingButton && buttonHoldModule === mi) {
         isHoldingButton = false;
         socket.emit('button-release', { moduleIndex: mi, timerValue });
-        renderExecutorView();
+        if (isSoloMode) renderSoloView(); else renderExecutorView();
       }
     });
     btn.addEventListener('mouseleave', () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } });
@@ -1510,7 +1510,7 @@ socket.on('simon-flash', ({ moduleIndex, sequence }) => {
 // Button strip color reveal
 socket.on('button-strip', ({ moduleIndex, stripColor: sc }) => {
   stripColor = sc;
-  if (isHoldingButton && buttonHoldModule === moduleIndex) renderExecutorView();
+  if (isHoldingButton && buttonHoldModule === moduleIndex) { if (isSoloMode) renderSoloView(); else renderExecutorView(); }
 });
 
 // ══════════════════════ INSTRUCTOR VIEW ══════════════════════

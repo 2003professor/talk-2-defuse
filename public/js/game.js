@@ -3416,10 +3416,11 @@ document.addEventListener('touchmove', (e) => {
 
 document.addEventListener('touchend', () => { magDragging = false; });
 
-// Keyboard shortcuts: G = magnifier, M = mute, Escape = close magnifier
+// Keyboard shortcuts: G = magnifier, M = mute, Escape = close magnifier (game only)
 document.addEventListener('keydown', (e) => {
   if (document.activeElement === document.getElementById('chat-input')) return;
   if (document.activeElement === document.getElementById('manual-search-input')) return;
+  if (_currentScreen !== 'game') return;
   if (e.key === 'g' || e.key === 'G') { toggleMagnifier(); }
   else if (e.key === 'm' || e.key === 'M') { if (VoiceChat.hasStream) VoiceChat.toggleMute(); }
   else if (e.key === 'Escape' && magActive) { toggleMagnifier(); }

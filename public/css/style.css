@@ -2779,19 +2779,21 @@ input[type="text"].input-error {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-mono);
+  table-layout: fixed;
 }
 .morse-dict-table td {
-  padding: 4px 6px;
+  padding: 5px 6px;
   font-size: 12px;
   border-bottom: 1px solid #d4c9a8;
   vertical-align: middle;
+  overflow: hidden;
 }
 .morse-dict-table tr:nth-child(even) td { background: rgba(139,125,60,0.04); }
 .mc_letter {
   font-weight: 900;
   font-size: 14px;
   color: #5c1010;
-  width: 24px;
+  width: 20px;
   text-align: center;
 }
 .mc_visual {
@@ -2799,7 +2801,7 @@ input[type="text"].input-error {
   align-items: center;
   gap: 3px;
   padding: 2px 0;
-  min-width: 60px;
+  width: 70px;
 }
 .mc_dit {
   display: inline-block;
@@ -2816,8 +2818,9 @@ input[type="text"].input-error {
 .mc_code {
   color: #6b5d44;
   font-size: 12px;
-  letter-spacing: 2px;
-  min-width: 50px;
+  letter-spacing: 1px;
+  width: 55px;
+  white-space: nowrap;
 }
 .mc_freq {
   font-family: var(--font-mono, monospace);
@@ -2825,12 +2828,12 @@ input[type="text"].input-error {
   font-size: 13px;
   color: #2a5a2a;
   text-align: right;
-  padding-left: 8px;
+  width: 45px;
 }
 .mc_sep {
-  width: 16px;
+  width: 10px;
   border-bottom: none !important;
-  border-left: 1px solid #c4b896;
+  border-left: 2px solid #c4b896;
 }
 
 /* ══════════════════════ MANUAL EXTRAS (BOOK THEME) ══════════════════════ */

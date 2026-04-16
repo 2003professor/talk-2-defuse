@@ -854,8 +854,9 @@ input[type="text"].input-error {
   flex-shrink: 1;
   flex-basis: 420px;
   min-width: 0;
+  max-height: 70vh;
+  overflow-y: auto;
   transition: flex-basis 0.4s ease, opacity 0.3s ease;
-  overflow: hidden;
 }
 .landing-panel-right.panel-hidden {
   flex-basis: 0;

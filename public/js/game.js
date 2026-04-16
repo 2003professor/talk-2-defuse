@@ -1169,7 +1169,7 @@ function renderModule(mod, mi) {
       html += `<div class="morse-status" id="morse-status-${mi}"></div>`;
       html += '<div class="morse-lamp-label">Signal Lamp</div>';
       html += '</div>';
-      html += '<div class="morse-info">Watch the light — it flashes ONE letter in Morse code, then pauses before repeating. Short blink = dot, long blink = dash. Describe the pattern to your partner.</div>';
+      html += '<div class="morse-info">Describe the blinking pattern to your partner.</div>';
       html += '<div class="morse-freq-input">';
       html += `<label>Frequency (MHz):</label>`;
       html += `<select class="morse-freq-select" data-module="${mi}"><option value="">Select...</option>`;
@@ -1445,7 +1445,7 @@ function startMorseFlash(moduleIndex, letter) {
   const lightEl = document.getElementById(`morse-light-${moduleIndex}`);
   if (!lightEl) return;
   const statusEl = document.getElementById(`morse-status-${moduleIndex}`);
-  const DOT = 250, DASH = 700, GAP = 250, REPEAT_PAUSE = 2500;
+  const DOT = 200, DASH = 800, GAP = 400, REPEAT_PAUSE = 3000;
   const code = MORSE_CODE[letter];
   if (!code) return;
   // Build timings for single letter
@@ -1462,9 +1462,7 @@ function startMorseFlash(moduleIndex, letter) {
     const t = timings[idx % timings.length];
     lightEl.classList.toggle('on', t.on);
     if (statusEl) {
-      if (t.isReset) statusEl.textContent = '— paused —';
-      else if (t.on) statusEl.textContent = t.duration === DASH ? '— DASH —' : '· DOT ·';
-      else statusEl.textContent = '';
+      statusEl.textContent = t.isReset ? '— repeating —' : '';
     }
     idx++;
     _morseTimeouts.set(moduleIndex, setTimeout(step, t.duration));

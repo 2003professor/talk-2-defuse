@@ -13,6 +13,7 @@ const VoiceChat = (() => {
   let isInitiator = false;
   let connectTimeout = null;
   let remoteDescSet = false;
+  let onStateChange = null;
   let iceCandidateQueue = [];
 
   const ICE_SERVERS = [
@@ -249,11 +250,13 @@ const VoiceChat = (() => {
       else if (localStream) { statusEl.textContent = 'Connecting...'; statusEl.style.color = 'var(--accent-yellow)'; }
       else { statusEl.textContent = ''; statusEl.style.color = ''; }
     }
+    if (onStateChange) onStateChange();
   }
 
   return {
     init, startCall, hangup, toggleMute, setMode, setPTT,
     getVoiceActivity, updateUI,
+    set onStateChange(fn) { onStateChange = fn; },
     get isConnected() { return isConnected; },
     get isMuted() { return isMuted; },
     get mode() { return mode; },

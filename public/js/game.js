@@ -3318,9 +3318,10 @@ function updateMagZoom() {
   const existing = magnifierLens.querySelector('.mag-zoom');
   if (existing) existing.remove();
 
-  // Use game-main in game, or landing screen as fallback
+  // Use game-main in game, or landing screen content as fallback
   const gameMain = document.querySelector('.game-main') || document.querySelector('#screen-landing.active');
   if (!gameMain) return;
+  const isLanding = !document.querySelector('.game-main');
   const gmRect = gameMain.getBoundingClientRect();
 
   const relX = cx - gmRect.left;
@@ -3331,9 +3332,11 @@ function updateMagZoom() {
   zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;';
 
   const clone = gameMain.cloneNode(true);
-  // Remove magnifier and canvas from clone to avoid recursion
+  // Remove magnifier from clone to avoid recursion
   const cloneMag = clone.querySelector('#magnifier');
   if (cloneMag) cloneMag.remove();
+  // Remove canvas backgrounds from clone (not copyable via cloneNode)
+  clone.querySelectorAll('canvas').forEach(c => c.remove());
   clone.style.cssText = `
     position: absolute;
     width: ${gmRect.width}px;
@@ -3344,6 +3347,7 @@ function updateMagZoom() {
     left: ${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px;
     top: ${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px;
     overflow: visible;
+    ${isLanding ? 'background: #0d1117;' : ''}
   `;
 
   // Fix scroll offsets and copy canvas data
@@ -4580,6 +4584,7 @@ if (!localStorage.getItem('tutorialSeen')) {
 
 // ══════════════════════ VOICE CHAT ══════════════════════
 VoiceChat.init(socket);
+VoiceChat.onStateChange = updateLobbyVoiceUI;
 
 document.getElementById('voice-mic-btn').addEventListener('click', () => {
   if (VoiceChat.hasStream) VoiceChat.hangup();

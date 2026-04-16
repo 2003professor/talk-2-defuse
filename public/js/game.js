@@ -114,12 +114,8 @@ function showScreen(name) {
     const el = document.getElementById('game-room-code');
     if (el) el.textContent = 'Room: ' + roomCode;
   }
-  // Show magnifier on landing page
-  if (name === 'landing' && typeof magActive !== 'undefined' && !magActive) {
-    setTimeout(() => toggleMagnifier(), 500);
-  }
-  // Hide magnifier when leaving game/landing
-  if (name !== 'game' && name !== 'landing' && typeof magActive !== 'undefined' && magActive) {
+  // Hide magnifier when leaving game
+  if (name !== 'game' && typeof magActive !== 'undefined' && magActive) {
     magActive = false;
     const mag = document.getElementById('magnifier');
     if (mag) mag.classList.add('hidden');
@@ -3320,23 +3316,7 @@ function updateMagZoom() {
 
   // Always use the game-main as the source — covers bomb, manual, everything
   const gameMain = document.querySelector('.game-main');
-  if (!gameMain) {
-    // Landing page: clone children into a fresh div (avoids .screen CSS baggage)
-    const landing = document.querySelector('#screen-landing');
-    if (!landing) return;
-    const zoomDiv = document.createElement('div');
-    zoomDiv.className = 'mag-zoom';
-    zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#0a0d12;';
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = `position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;width:${window.innerWidth}px;height:${window.innerHeight}px;pointer-events:none;transform-origin:0 0;transform:scale(${MAG_ZOOM});left:${(-cx * MAG_ZOOM + MAG_SIZE / 2)}px;top:${(-cy * MAG_ZOOM + MAG_SIZE / 2)}px;overflow:visible;background:#0a0d12;`;
-    for (const child of landing.children) {
-      if (child.id === 'magnifier' || child.classList.contains('landing-bg')) continue;
-      wrapper.appendChild(child.cloneNode(true));
-    }
-    zoomDiv.appendChild(wrapper);
-    magnifierLens.appendChild(zoomDiv);
-    return;
-  }
+  if (!gameMain) return;
   const gmRect = gameMain.getBoundingClientRect();
 
   const relX = cx - gmRect.left;
@@ -4619,9 +4599,3 @@ document.addEventListener('keyup', (e) => {
 // ══════════════════════ INIT ══════════════════════
 applySettings();
 
-// Show magnifier on landing page as a fun interactive element
-setTimeout(() => {
-  if (_currentScreen === 'landing' && !magActive) {
-    toggleMagnifier();
-  }
-}, 1200);

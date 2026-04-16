@@ -202,7 +202,17 @@ function generateBomb(difficulty, customSettings) {
     correctSequence: [correctWire], cutWires: [], solved: false,
   });
 
-  // ── Button Module (medium + hard, or custom) ─────────────────────────
+  // For medium: pick 2 random extra modules from the 6 non-core ones
+  const extraModules = ['keypad', 'simon', 'memory', 'maze', 'knob', 'morse'];
+  const mediumExtras = difficulty === 'medium' ? new Set(pickN(extraModules, 2)) : null;
+  function shouldInclude(modType) {
+    if (isCustom) return customSettings.modules.includes(modType);
+    if (isHardLike) return true; // hard/flip get all modules
+    if (difficulty === 'medium') return mediumExtras.has(modType);
+    return false; // easy doesn't get extra modules
+  }
+
+  // ── Button Module (all difficulties) ─────────────────────────
   if (isCustom ? customSettings.modules.includes('button') : true) {
     const buttonColor = pick(BUTTON_COLORS_LIST);
     const buttonLabel = pick(BUTTON_LABELS);
@@ -216,7 +226,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Keypad Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('keypad') : (difficulty === 'medium' || isHardLike)) {
+  if (shouldInclude('keypad')) {
     const columns = [
       ['★', '△', '♪', '☀', '♠', '♥', '☆'],
       ['♦', '★', '☆', '⚡', '♠', '♥', '□'],
@@ -245,7 +255,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Simon Says Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('simon') : isHardLike) {
+  if (shouldInclude('simon')) {
     const sequenceLength = 3 + Math.floor(Math.random() * 2);
     const sequence = [];
     for (let i = 0; i < sequenceLength; i++) sequence.push(pick(SIMON_COLORS));
@@ -273,7 +283,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Memory Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('memory') : (difficulty === 'medium' || isHardLike)) {
+  if (shouldInclude('memory')) {
     const stages = generateMemoryStages(protocol);
     bomb.modules.push({
       type: 'memory', stages,
@@ -282,7 +292,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Maze Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('maze') : isHardLike) {
+  if (shouldInclude('maze')) {
     const layout = pick(MAZE_LAYOUTS);
     const wallSet = getMazeWallSet(layout);
     // Pick random start and end that aren't the same or markers
@@ -301,7 +311,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Knob Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('knob') : isHardLike) {
+  if (shouldInclude('knob')) {
     const patterns = KNOB_PATTERNS[protocol];
     const chosen = pick(patterns);
     bomb.modules.push({
@@ -311,7 +321,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Morse Code Module (hard only, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('morse') : isHardLike) {
+  if (shouldInclude('morse')) {
     const morseWords = [
       { word: 'ALPHA', freq: '3.505' }, { word: 'BRAVO', freq: '3.515' },
       { word: 'COBRA', freq: '3.522' }, { word: 'DELTA', freq: '3.532' },

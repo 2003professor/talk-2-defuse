@@ -57,7 +57,8 @@ function validateCustomSettings(cs) {
   if (!modules.includes('wires')) modules.unshift('wires');
   const sequenceEnforcement = !!cs.sequenceEnforcement;
   const strikeSpeedup = !!cs.strikeSpeedup;
-  return { timer, maxStrikes, wireCount, modules, sequenceEnforcement, strikeSpeedup };
+  const flipMode = !!cs.flipMode;
+  return { timer, maxStrikes, wireCount, modules, sequenceEnforcement, strikeSpeedup, flipMode };
 }
 
 function getScoreboard() {
@@ -1934,8 +1935,9 @@ function checkWin(code, room) {
     return;
   }
 
-  // Flip mode: swap roles after every module solve
-  if (room.difficulty === 'flip' && room.players.length === 2) {
+  // Flip mode: swap roles after every module solve (built-in flip OR custom flipMode)
+  const isFlip = room.difficulty === 'flip' || (room.customSettings && room.customSettings.flipMode);
+  if (isFlip && room.players.length === 2) {
     const p1 = room.players[0];
     const p2 = room.players[1];
     if (p1.role && p2.role && p1.role !== 'solo') {

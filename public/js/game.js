@@ -676,6 +676,7 @@ function readCustomSettingsFromUI() {
     modules: ['wires'],
     sequenceEnforcement: document.getElementById('custom-sequence').checked,
     strikeSpeedup: document.getElementById('custom-speedup').checked,
+    flipMode: document.getElementById('custom-flip').checked,
   };
   if (document.getElementById('custom-mod-button').checked) customSettings.modules.push('button');
   if (document.getElementById('custom-mod-keypad').checked) customSettings.modules.push('keypad');
@@ -710,6 +711,7 @@ function applyCustomSettingsToUI(cs) {
   document.getElementById('custom-mod-knob').checked = cs.modules.includes('knob');
   document.getElementById('custom-sequence').checked = cs.sequenceEnforcement;
   document.getElementById('custom-speedup').checked = cs.strikeSpeedup;
+  document.getElementById('custom-flip').checked = cs.flipMode || false;
   customSettings = cs;
 }
 
@@ -722,7 +724,7 @@ function applyCustomSettingsToUI(cs) {
 // Checkboxes + toggles
 ['custom-mod-button', 'custom-mod-keypad', 'custom-mod-simon', 'custom-mod-morse',
  'custom-mod-memory', 'custom-mod-maze', 'custom-mod-password', 'custom-mod-knob',
- 'custom-sequence', 'custom-speedup'].forEach(id => {
+ 'custom-sequence', 'custom-speedup', 'custom-flip'].forEach(id => {
   document.getElementById(id).addEventListener('change', emitCustomSettings);
 });
 

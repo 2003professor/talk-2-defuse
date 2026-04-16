@@ -1421,7 +1421,7 @@ io.on('connection', (socket) => {
     if (wireIndex + 1 === expectedWire) {
       if (mod.cutWires.length === mod.correctSequence.length) {
         mod.solved = true;
-        checkSequenceViolation(socket.roomCode, room, moduleIndex);
+        checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
         emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'wires' });
         checkWin(socket.roomCode, room);
       } else {
@@ -1439,7 +1439,7 @@ io.on('connection', (socket) => {
     if (!mod || mod.type !== 'button' || mod.solved) return;
     if (mod.correctAction.type === 'press') {
       mod.solved = true;
-      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
       emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'button' });
       checkWin(socket.roomCode, room);
     } else {
@@ -1471,7 +1471,7 @@ io.on('connection', (socket) => {
     const targetDigit = releaseMap[mod.stripColor];
     if (timerStr.includes(targetDigit)) {
       mod.solved = true;
-      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
       emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'button' });
       checkWin(socket.roomCode, room);
     } else {
@@ -1490,7 +1490,7 @@ io.on('connection', (socket) => {
       mod.pressedSymbols.push(symbol);
       if (mod.pressedSymbols.length === mod.correctOrder.length) {
         mod.solved = true;
-        checkSequenceViolation(socket.roomCode, room, moduleIndex);
+        checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
         emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'keypad' });
         checkWin(socket.roomCode, room);
       } else {
@@ -1518,7 +1518,7 @@ io.on('connection', (socket) => {
         mod.playerInput = [];
         if (mod.currentStep >= mod.sequence.length) {
           mod.solved = true;
-          checkSequenceViolation(socket.roomCode, room, moduleIndex);
+          checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
           emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'simon' });
           checkWin(socket.roomCode, room);
         } else {
@@ -1553,7 +1553,7 @@ io.on('connection', (socket) => {
     if (!mod || mod.type !== 'morse' || mod.solved) return;
     if (freq === mod.correctFreq) {
       mod.solved = true;
-      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
       emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'morse' });
       checkWin(socket.roomCode, room);
     } else {
@@ -1581,7 +1581,7 @@ io.on('connection', (socket) => {
     const word = mod.currentLetters.map((idx, col) => mod.columns[col][idx]).join('');
     if (word === mod.correctWord) {
       mod.solved = true;
-      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
       emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'password' });
       checkWin(socket.roomCode, room);
     } else {
@@ -1605,7 +1605,7 @@ io.on('connection', (socket) => {
       mod.currentStage++;
       if (mod.currentStage >= mod.stages.length) {
         mod.solved = true;
-        checkSequenceViolation(socket.roomCode, room, moduleIndex);
+        checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
         emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'memory' });
         checkWin(socket.roomCode, room);
       } else {
@@ -1643,7 +1643,7 @@ io.on('connection', (socket) => {
     mod.currentPos = { row: newRow, col: newCol };
     if (newRow === mod.end.row && newCol === mod.end.col) {
       mod.solved = true;
-      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
       emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'maze' });
       checkWin(socket.roomCode, room);
     } else {
@@ -1661,7 +1661,7 @@ io.on('connection', (socket) => {
     mod.currentPosition = position;
     if (position === mod.correctPosition) {
       mod.solved = true;
-      checkSequenceViolation(socket.roomCode, room, moduleIndex);
+      checkSequenceViolation(socket.roomCode, room, moduleIndex, socket.id);
       emitGameUpdate(socket.roomCode, room, { event: 'module-solved', moduleType: 'knob' });
       checkWin(socket.roomCode, room);
     } else {
@@ -1944,7 +1944,7 @@ function checkWin(code, room) {
 }
 
 // Call this when a module is solved to check if it was out of sequence
-function checkSequenceViolation(code, room, moduleIndex) {
+function checkSequenceViolation(code, room, moduleIndex, socketId) {
   const bomb = room.bomb;
   if (!bomb.solveOrder || bomb.solveOrder.length <= 1) return;
 
@@ -1968,8 +1968,10 @@ function checkSequenceViolation(code, room, moduleIndex) {
     }
   } else {
     // Wrong sequence — pointer stays, player can still resume correct order
-    if (!bomb._sequenceWarned) {
-      bomb._sequenceWarned = true;
+    // Each player gets their own free pass (important for flip mode role swaps)
+    if (!bomb._sequenceWarnedPlayers) bomb._sequenceWarnedPlayers = {};
+    if (!bomb._sequenceWarnedPlayers[socketId]) {
+      bomb._sequenceWarnedPlayers[socketId] = true;
       emitGameUpdate(code, room, {
         event: 'sequence-warning',
         message: 'Wrong order! Check the Sequence tab in the manual to find the correct solve order. This one\'s free — next time it\'s a strike!',

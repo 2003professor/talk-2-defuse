@@ -114,11 +114,16 @@ function showScreen(name) {
     const el = document.getElementById('game-room-code');
     if (el) el.textContent = 'Room: ' + roomCode;
   }
-  // Hide magnifier when leaving game
-  if (name !== 'game' && typeof magActive !== 'undefined' && magActive) {
+  // Show magnifier on landing page
+  if (name === 'landing' && typeof magActive !== 'undefined' && !magActive) {
+    setTimeout(() => toggleMagnifier(), 500);
+  }
+  // Hide magnifier when leaving game/landing
+  if (name !== 'game' && name !== 'landing' && typeof magActive !== 'undefined' && magActive) {
     magActive = false;
     const mag = document.getElementById('magnifier');
     if (mag) mag.classList.add('hidden');
+    if (magRafId) { cancelAnimationFrame(magRafId); magRafId = null; }
   }
   // Cleanup game effects when leaving
   if (name !== 'game') {
@@ -3279,8 +3284,8 @@ function updateMagZoom() {
   const existing = magnifierLens.querySelector('.mag-zoom');
   if (existing) existing.remove();
 
-  // Always use the game-main as the source — covers bomb, manual, everything
-  const gameMain = document.querySelector('.game-main');
+  // Use game-main in game, or landing screen as fallback
+  const gameMain = document.querySelector('.game-main') || document.querySelector('#screen-landing.active');
   if (!gameMain) return;
   const gmRect = gameMain.getBoundingClientRect();
 
@@ -4559,3 +4564,10 @@ document.addEventListener('keyup', (e) => {
 
 // ══════════════════════ INIT ══════════════════════
 applySettings();
+
+// Show magnifier on landing page as a fun interactive element
+setTimeout(() => {
+  if (_currentScreen === 'landing' && !magActive) {
+    toggleMagnifier();
+  }
+}, 1200);

@@ -313,17 +313,18 @@ function generateBomb(difficulty, customSettings) {
   // ── Morse Code Module (hard only, or custom) ─────────────────────────
   if (isCustom ? customSettings.modules.includes('morse') : isHardLike) {
     const morseWords = [
-      { word: 'SHELL', freq: '3.505' }, { word: 'HALLS', freq: '3.515' },
-      { word: 'SLICK', freq: '3.522' }, { word: 'TRICK', freq: '3.532' },
-      { word: 'BOXES', freq: '3.535' }, { word: 'LEAKS', freq: '3.542' },
-      { word: 'STROBE', freq: '3.545' }, { word: 'BISTRO', freq: '3.552' },
-      { word: 'FLICK', freq: '3.555' }, { word: 'BOMBS', freq: '3.565' },
-      { word: 'BREAK', freq: '3.572' }, { word: 'BRICK', freq: '3.575' },
-      { word: 'STEAK', freq: '3.582' }, { word: 'STING', freq: '3.592' },
-      { word: 'VECTOR', freq: '3.595' }, { word: 'BEATS', freq: '3.600' },
+      { word: 'ALPHA', freq: '3.505' }, { word: 'BRAVO', freq: '3.515' },
+      { word: 'COBRA', freq: '3.522' }, { word: 'DELTA', freq: '3.532' },
+      { word: 'EAGLE', freq: '3.535' }, { word: 'FLAME', freq: '3.542' },
+      { word: 'GHOST', freq: '3.545' }, { word: 'HAVOC', freq: '3.552' },
+      { word: 'INTEL', freq: '3.555' }, { word: 'JOKER', freq: '3.565' },
+      { word: 'KNIFE', freq: '3.572' }, { word: 'LANCE', freq: '3.575' },
+      { word: 'MOTOR', freq: '3.582' }, { word: 'NERVE', freq: '3.592' },
+      { word: 'OMEGA', freq: '3.595' }, { word: 'PULSE', freq: '3.600' },
     ];
     const chosen = pick(morseWords);
-    bomb.modules.push({ type: 'morse', word: chosen.word, correctFreq: chosen.freq, solved: false });
+    // Only the first letter is flashed — each word has a unique first letter
+    bomb.modules.push({ type: 'morse', word: chosen.word[0], correctFreq: chosen.freq, solved: false });
   }
 
   // Randomize module order
@@ -1037,21 +1038,19 @@ function generateManual(bomb) {
   if (bomb.modules.some(m => m.type === 'morse')) {
     manual.chapters.morse = {
       title: 'Morse Code Module',
-      description: 'A light flashes a word in Morse code (repeating). Decode the word and select the matching frequency. (Same for all protocols.)',
+      description: 'A light flashes a SINGLE LETTER in Morse code, then pauses before repeating. A short blink is a dot (·), a long blink is a dash (—). Decode the letter using the reference below, then look up the matching frequency. (Same for all protocols.)',
       morseAlphabet: {
-        A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',
-        K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',
-        U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',
+        A:'·—',B:'—···',C:'—·—·',D:'—··',E:'·',F:'··—·',G:'——·',H:'····',I:'··',J:'·———',K:'—·—',L:'·—··',M:'——',N:'—·',O:'———',P:'·——·',
       },
       frequencyTable: [
-        { word: 'SHELL', freq: '3.505' }, { word: 'HALLS', freq: '3.515' },
-        { word: 'SLICK', freq: '3.522' }, { word: 'TRICK', freq: '3.532' },
-        { word: 'BOXES', freq: '3.535' }, { word: 'LEAKS', freq: '3.542' },
-        { word: 'STROBE', freq: '3.545' }, { word: 'BISTRO', freq: '3.552' },
-        { word: 'FLICK', freq: '3.555' }, { word: 'BOMBS', freq: '3.565' },
-        { word: 'BREAK', freq: '3.572' }, { word: 'BRICK', freq: '3.575' },
-        { word: 'STEAK', freq: '3.582' }, { word: 'STING', freq: '3.592' },
-        { word: 'VECTOR', freq: '3.595' }, { word: 'BEATS', freq: '3.600' },
+        { word: 'ALPHA', freq: '3.505' }, { word: 'BRAVO', freq: '3.515' },
+        { word: 'COBRA', freq: '3.522' }, { word: 'DELTA', freq: '3.532' },
+        { word: 'EAGLE', freq: '3.535' }, { word: 'FLAME', freq: '3.542' },
+        { word: 'GHOST', freq: '3.545' }, { word: 'HAVOC', freq: '3.552' },
+        { word: 'INTEL', freq: '3.555' }, { word: 'JOKER', freq: '3.565' },
+        { word: 'KNIFE', freq: '3.572' }, { word: 'LANCE', freq: '3.575' },
+        { word: 'MOTOR', freq: '3.582' }, { word: 'NERVE', freq: '3.592' },
+        { word: 'OMEGA', freq: '3.595' }, { word: 'PULSE', freq: '3.600' },
       ],
     };
   }

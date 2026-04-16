@@ -1166,9 +1166,10 @@ function renderModule(mod, mi) {
       html += '<div class="morse-container">';
       html += '<div class="morse-lamp-assembly">';
       html += `<div class="morse-bulb-housing"><div class="morse-light" id="morse-light-${mi}"></div></div>`;
+      html += `<div class="morse-status" id="morse-status-${mi}"></div>`;
       html += '<div class="morse-lamp-label">Signal Lamp</div>';
       html += '</div>';
-      html += '<div class="morse-info">Watch the flashing light. Describe the pattern to your partner.</div>';
+      html += '<div class="morse-info">Watch the light — it flashes ONE letter in Morse code, then pauses before repeating. Short blink = dot, long blink = dash. Describe the pattern to your partner.</div>';
       html += '<div class="morse-freq-input">';
       html += `<label>Frequency (MHz):</label>`;
       html += `<select class="morse-freq-select" data-module="${mi}"><option value="">Select...</option>`;
@@ -1438,28 +1439,33 @@ function clearAllMorseTimeouts() {
   _morseTimeouts.clear();
 }
 
-function startMorseFlash(moduleIndex, word) {
+function startMorseFlash(moduleIndex, letter) {
   // Clear any existing timeout for this module
   if (_morseTimeouts.has(moduleIndex)) clearTimeout(_morseTimeouts.get(moduleIndex));
   const lightEl = document.getElementById(`morse-light-${moduleIndex}`);
   if (!lightEl) return;
-  const DOT = 200, DASH = 600, GAP = 200, LETTER_GAP = 600, WORD_GAP = 1400;
+  const statusEl = document.getElementById(`morse-status-${moduleIndex}`);
+  const DOT = 250, DASH = 700, GAP = 250, REPEAT_PAUSE = 2500;
+  const code = MORSE_CODE[letter];
+  if (!code) return;
+  // Build timings for single letter
   const timings = [];
-  for (let i = 0; i < word.length; i++) {
-    const code = MORSE_CODE[word[i]];
-    if (!code) continue;
-    for (let j = 0; j < code.length; j++) {
-      timings.push({ on: true, duration: code[j] === '.' ? DOT : DASH });
-      if (j < code.length - 1) timings.push({ on: false, duration: GAP });
-    }
-    if (i < word.length - 1) timings.push({ on: false, duration: LETTER_GAP });
+  for (let j = 0; j < code.length; j++) {
+    timings.push({ on: true, duration: code[j] === '.' ? DOT : DASH });
+    if (j < code.length - 1) timings.push({ on: false, duration: GAP });
   }
-  timings.push({ on: false, duration: WORD_GAP });
+  // Long pause at end signals reset
+  timings.push({ on: false, duration: REPEAT_PAUSE, isReset: true });
   let idx = 0;
   function step() {
     if (!document.getElementById(`morse-light-${moduleIndex}`)) { _morseTimeouts.delete(moduleIndex); return; }
     const t = timings[idx % timings.length];
     lightEl.classList.toggle('on', t.on);
+    if (statusEl) {
+      if (t.isReset) statusEl.textContent = '— paused —';
+      else if (t.on) statusEl.textContent = t.duration === DASH ? '— DASH —' : '· DOT ·';
+      else statusEl.textContent = '';
+    }
     idx++;
     _morseTimeouts.set(moduleIndex, setTimeout(step, t.duration));
   }
@@ -2027,40 +2033,35 @@ function renderManualTab(tab) {
   }
 
   // Morse code dictionary — 4-column grid table with visual dots/dashes
-  if (ch.morseAlphabet) {
+  if (ch.morseAlphabet && ch.frequencyTable) {
     function morseVis(code) {
       let v = '';
-      for (const ch of code) {
-        if (ch === '.') v += '<span class="mc_dit"></span>';
-        else if (ch === '-') v += '<span class="mc_dah"></span>';
+      for (const c of code) {
+        if (c === '·') v += '<span class="mc_dit"></span>';
+        else if (c === '—') v += '<span class="mc_dah"></span>';
       }
       return v;
     }
-    html += '<h3 class="section-subtitle">Morse Alphabet</h3>';
+    html += '<h3 class="section-subtitle">Morse Code → Frequency Lookup</h3>';
     html += '<div class="morse-dict-grid">';
-    const entries = Object.entries(ch.morseAlphabet);
-    const half = Math.ceil(entries.length / 2);
-    const col1 = entries.slice(0, half);
-    const col2 = entries.slice(half);
+    const half = Math.ceil(ch.frequencyTable.length / 2);
+    const col1 = ch.frequencyTable.slice(0, half);
+    const col2 = ch.frequencyTable.slice(half);
     html += '<table class="morse-dict-table"><tbody>';
     for (let i = 0; i < half; i++) {
-      const [l1, c1] = col1[i];
-      html += `<tr><td class="mc_letter">${l1}</td><td class="mc_visual">${morseVis(c1)}</td><td class="mc_code">${c1}</td>`;
+      const e1 = col1[i];
+      const l1 = e1.word[0];
+      const m1 = ch.morseAlphabet[l1] || '';
+      html += `<tr><td class="mc_letter">${l1}</td><td class="mc_visual">${morseVis(m1)}</td><td class="mc_code">${m1}</td><td class="mc_freq">${e1.freq}</td>`;
       if (col2[i]) {
-        const [l2, c2] = col2[i];
-        html += `<td class="mc_sep"></td><td class="mc_letter">${l2}</td><td class="mc_visual">${morseVis(c2)}</td><td class="mc_code">${c2}</td>`;
-      } else {
-        html += '<td></td><td></td><td></td><td></td>';
+        const e2 = col2[i];
+        const l2 = e2.word[0];
+        const m2 = ch.morseAlphabet[l2] || '';
+        html += `<td class="mc_sep"></td><td class="mc_letter">${l2}</td><td class="mc_visual">${morseVis(m2)}</td><td class="mc_code">${m2}</td><td class="mc_freq">${e2.freq}</td>`;
       }
       html += '</tr>';
     }
     html += '</tbody></table></div>';
-  }
-  if (ch.frequencyTable) {
-    html += '<h3 class="section-subtitle">Frequency Table</h3>';
-    html += '<table class="bomb-index-table"><thead><tr><th>Word</th><th>Frequency</th></tr></thead><tbody>';
-    ch.frequencyTable.forEach(e => html += `<tr><td>${e.word}</td><td>${e.freq} MHz</td></tr>`);
-    html += '</tbody></table>';
   }
 
   // ── Password word list (grouped by first letter) ──
@@ -2921,6 +2922,8 @@ function applyRedactions() {
     'strike','module','stage','display','frequency','column','pattern','vowel','odd','even',
     'shell','halls','slick','trick','boxes','leaks','strobe','bistro','flick','bombs','break','brick',
     'steak','sting','vector','beats','mhz','release','timer','countdown','lit','indicator',
+    'alpha','bravo','cobra','delta','eagle','flame','ghost','havoc','intel','joker',
+    'knife','lance','motor','nerve','omega','pulse','dot','dash','short','long','blink',
     'about','after','again','below','could','every','first','found','great','house','large','learn',
     'never','other','place','plant','point','right','small','sound','spell','still','study','their',
     'there','these','thing','think','three','water','where','which','world','would','write',

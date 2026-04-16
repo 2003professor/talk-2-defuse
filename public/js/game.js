@@ -2207,10 +2207,21 @@ socket.on('game-update', (data) => {
     });
   }
   if (data.event === 'sequence-warning') {
-    AudioFX.click();
-    showToast(data.message || 'Wrong order! Check the Sequence tab.');
-    addSystemMessage(data.message || 'Wrong sequence — free pass this time! Check the Sequence tab in the manual.');
-    flashLighting('yellow', 800);
+    AudioFX.strike();
+    flashLighting('yellow', 1200);
+    addSystemMessage('⚠ WRONG SEQUENCE — free pass this time! Check the Sequence tab for the correct order.');
+    // Big centered warning overlay
+    const warn = document.createElement('div');
+    warn.className = 'sequence-warning-overlay';
+    warn.innerHTML = `
+      <div class="seq-warn-icon">⚠</div>
+      <div class="seq-warn-title">WRONG ORDER!</div>
+      <div class="seq-warn-text">You solved a module out of sequence.<br>Check the <strong>Sequence</strong> tab in the manual for the correct order.</div>
+      <div class="seq-warn-pass">FREE PASS — next time it's a strike!</div>
+    `;
+    document.body.appendChild(warn);
+    setTimeout(() => warn.classList.add('seq-warn-fade'), 4000);
+    setTimeout(() => warn.remove(), 5000);
   }
   if (data.event === 'module-solved') {
     AudioFX.success();

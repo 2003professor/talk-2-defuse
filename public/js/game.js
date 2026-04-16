@@ -312,6 +312,7 @@ socket.on('solo-start', async (data) => {
 
   showScreen('game');
   renderSoloView();
+  if (soloRound === 1) showKeybindOverlay();
   updateTimer(data.timer, 1);
   updateStrikes(0, data.maxStrikes);
   const diffLabel = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[soloDifficulty] || 'Practice';
@@ -940,6 +941,7 @@ socket.on('game-start', async (data) => {
     manualData = data.manual;
     timerValue = data.timer;
     renderInstructorView();
+    showKeybindOverlay();
   }
 
   updateTimer(timerValue, 1);
@@ -3868,6 +3870,22 @@ function playSoloIntro() {
 
   sched(() => { clearInterval(hudIv); endIntro(); }, 2900);
   introTimeout = _t;
+}
+
+function showKeybindOverlay() {
+  const existing = document.getElementById('keybind-overlay');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'keybind-overlay';
+  el.className = 'keybind-overlay';
+  el.innerHTML = `
+    <div class="kb-row"><span class="kb-key">←</span> <span class="kb-key">→</span> Flip pages</div>
+    <div class="kb-row"><span class="kb-key">↑</span> <span class="kb-key">↓</span> Scroll</div>
+    <div class="kb-row"><span class="kb-key">✏️</span> Draw on pages</div>
+  `;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add('kb-fade'), 3500);
+  setTimeout(() => el.remove(), 5000);
 }
 
 // ══════════════════════ KEYBOARD PAGE NAVIGATION ══════════════════════

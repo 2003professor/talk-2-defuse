@@ -2717,6 +2717,28 @@ input[type="text"].input-error {
     0 0 80px rgba(210,153,34,0.2),
     0 0 120px rgba(210,153,34,0.08);
 }
+/* ══════════════════════ KEYBIND OVERLAY ══════════════════════ */
+.keybind-overlay {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  z-index: 9999; pointer-events: none;
+  background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px; padding: 14px 24px;
+  display: flex; flex-direction: column; gap: 6px;
+  font-family: var(--font-mono); font-size: 13px; color: rgba(255,255,255,0.8);
+  backdrop-filter: blur(8px);
+  animation: kb-enter 0.4s ease;
+  transition: opacity 1.2s ease;
+}
+.keybind-overlay.kb-fade { opacity: 0; }
+.kb-row { display: flex; align-items: center; gap: 6px; }
+.kb-key {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 26px; padding: 0 6px;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 5px; font-weight: 700; font-size: 14px; color: var(--accent-orange);
+}
+@keyframes kb-enter { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
 .morse-status {
   font-family: var(--font-mono); font-size: 11px; font-weight: 700;
   color: var(--accent-yellow); letter-spacing: 1px;

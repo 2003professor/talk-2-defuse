@@ -3318,40 +3318,71 @@ function updateMagZoom() {
   const existing = magnifierLens.querySelector('.mag-zoom');
   if (existing) existing.remove();
 
-  // Use game-main in game, or landing screen content as fallback
-  const gameMain = document.querySelector('.game-main') || document.querySelector('#screen-landing.active');
-  if (!gameMain) return;
-  const isLanding = !document.querySelector('.game-main');
-  const gmRect = gameMain.getBoundingClientRect();
+  // Use game-main in game, or document body as fallback for landing
+  const gameMain = document.querySelector('.game-main');
+  const source = gameMain || document.documentElement;
+  if (!source) return;
+  const isLanding = !gameMain;
+  const srcRect = source.getBoundingClientRect();
+  // For landing, use viewport dimensions
+  const gw = isLanding ? window.innerWidth : srcRect.width;
+  const gh = isLanding ? window.innerHeight : srcRect.height;
+  const gx = isLanding ? 0 : srcRect.left;
+  const gy = isLanding ? 0 : srcRect.top;
 
-  const relX = cx - gmRect.left;
-  const relY = cy - gmRect.top;
+  const relX = cx - gx;
+  const relY = cy - gy;
 
   const zoomDiv = document.createElement('div');
   zoomDiv.className = 'mag-zoom';
   zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;';
 
-  const clone = gameMain.cloneNode(true);
+  if (isLanding) {
+    // For landing: use a screenshot-like approach with fixed background
+    zoomDiv.style.cssText += `
+      background: #0a0d12;
+    `;
+    // Clone just the visible landing content
+    const landingScreen = document.querySelector('#screen-landing.active');
+    if (!landingScreen) { magnifierLens.appendChild(zoomDiv); return; }
+    const clone = landingScreen.cloneNode(true);
+    clone.querySelector('#magnifier')?.remove();
+    clone.querySelector('#landing-bg')?.remove();
+    // Force the clone to render as a flat positioned block
+    clone.style.cssText = `
+      position: absolute; display: block;
+      width: ${window.innerWidth}px; height: ${window.innerHeight}px;
+      pointer-events: none; transform-origin: 0 0;
+      transform: scale(${MAG_ZOOM});
+      left: ${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px;
+      top: ${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px;
+      overflow: visible; background: #0a0d12;
+    `;
+    // Remove duplicate IDs to avoid CSS conflicts
+    clone.removeAttribute('id');
+    zoomDiv.appendChild(clone);
+    magnifierLens.appendChild(zoomDiv);
+    return;
+  }
+
+  const clone = source.cloneNode(true);
   // Remove magnifier from clone to avoid recursion
   const cloneMag = clone.querySelector('#magnifier');
   if (cloneMag) cloneMag.remove();
-  // Remove canvas backgrounds from clone (not copyable via cloneNode)
-  clone.querySelectorAll('canvas').forEach(c => c.remove());
   clone.style.cssText = `
     position: absolute;
-    width: ${gmRect.width}px;
-    height: ${gmRect.height}px;
+    width: ${gw}px;
+    height: ${gh}px;
     pointer-events: none;
     transform-origin: 0 0;
     transform: scale(${MAG_ZOOM});
     left: ${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px;
     top: ${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px;
     overflow: visible;
-    ${isLanding ? 'background: #0d1117;' : ''}
   `;
 
   // Fix scroll offsets and copy canvas data
-  const origEls = gameMain.querySelectorAll('*');
+  const origEls = source.querySelectorAll('*');
   const cloneEls = clone.querySelectorAll('*');
   for (let i = 0; i < origEls.length; i++) {
     const orig = origEls[i];

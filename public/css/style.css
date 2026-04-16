@@ -3689,6 +3689,14 @@ body.colorblind .wire-color-black .wire-strand {
   background-image: repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(255,255,255,0.15) 5px, rgba(255,255,255,0.15) 6px);
 }
 
+/* Colorblind labels for Simon buttons */
+.cb-label { display: none; }
+body.colorblind .cb-label {
+  display: block; font-size: 14px; font-weight: 900; color: rgba(255,255,255,0.9);
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  pointer-events: none;
+}
+
 /* ══════════════════════ PASSWORD MODULE ══════════════════════ */
 .module-panel[data-type="password"] .module-panel-header::before { background: #58a6ff; }
 .password-container { text-align: center; padding: 8px 0; }

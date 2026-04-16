@@ -88,8 +88,9 @@ function applySettings() {
   }
 }
 
-// Load settings immediately
+// Load and apply settings immediately
 loadSettings();
+applySettings();
 
 // ── DOM / Screens ───────────────────────────────────────────────
 const screens = {
@@ -1155,7 +1156,7 @@ function renderModule(mod, mi) {
     case 'simon': {
       html += '<div class="simon-container"><div class="simon-display" id="simon-display-' + mi + '">';
       ['red', 'blue', 'green', 'yellow'].forEach(c => {
-        html += `<div class="simon-light simon-${c}" data-module="${mi}" data-color="${c}" tabindex="0" role="button" aria-label="Simon ${c}"></div>`;
+        html += `<div class="simon-light simon-${c}" data-module="${mi}" data-color="${c}" tabindex="0" role="button" aria-label="Simon ${c}"><span class="cb-label">${c[0].toUpperCase()}</span></div>`;
       });
       html += '</div>';
       html += `<button class="btn btn-tiny simon-replay-btn" data-module="${mi}">Replay Sequence</button></div>`;

@@ -3356,9 +3356,13 @@ document.addEventListener('touchmove', (e) => {
 
 document.addEventListener('touchend', () => { magDragging = false; });
 
-// Close magnifier on Escape
+// Keyboard shortcuts: G = magnifier, M = mute, Escape = close magnifier
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && magActive) { magActive = false; magnifier.classList.add('hidden'); if (magRafId) { cancelAnimationFrame(magRafId); magRafId = null; } }
+  if (document.activeElement === document.getElementById('chat-input')) return;
+  if (document.activeElement === document.getElementById('manual-search-input')) return;
+  if (e.key === 'g' || e.key === 'G') { toggleMagnifier(); }
+  else if (e.key === 'm' || e.key === 'M') { if (VoiceChat.hasStream) VoiceChat.toggleMute(); }
+  else if (e.key === 'Escape' && magActive) { toggleMagnifier(); }
 });
 
 // ══════════════════════ FLIP MODE — ROLE SWAP ══════════════════════
@@ -3881,6 +3885,8 @@ function showKeybindOverlay() {
   el.innerHTML = `
     <div class="kb-row"><span class="kb-key">←</span> <span class="kb-key">→</span> Flip pages</div>
     <div class="kb-row"><span class="kb-key">↑</span> <span class="kb-key">↓</span> Scroll</div>
+    <div class="kb-row"><span class="kb-key">G</span> Toggle magnifier</div>
+    <div class="kb-row"><span class="kb-key">M</span> Mute / unmute mic</div>
     <div class="kb-row"><span class="kb-key">✏️</span> Draw on pages</div>
   `;
   document.body.appendChild(el);

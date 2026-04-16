@@ -2194,18 +2194,25 @@ socket.on('game-update', (data) => {
   if (data.timerSpeed) timerSpeed = data.timerSpeed;
   if (data.bomb) {
     // Save scroll positions before re-render
-    const scrollEls = {};
-    document.querySelectorAll('.game-main, .manual-body, .solo-bomb-section, .solo-manual-section, #game-content').forEach(el => {
-      if (el.scrollTop > 0) scrollEls[el.className || el.id] = el.scrollTop;
+    const scrollSelectors = ['#game-content', '.game-main', '#manual-body', '.solo-bomb-section', '.solo-manual-section', '.solo-module-grid'];
+    const savedScrolls = [];
+    scrollSelectors.forEach(sel => {
+      const el = document.querySelector(sel);
+      if (el && el.scrollTop > 0) savedScrolls.push({ sel, top: el.scrollTop });
     });
+    // Also save window scroll
+    const winScroll = window.scrollY;
+
     bombState = data.bomb;
     if (isSoloMode) renderSoloView(); else renderExecutorView();
+
     // Restore scroll positions
     requestAnimationFrame(() => {
-      Object.entries(scrollEls).forEach(([key, top]) => {
-        const el = document.querySelector('.' + key) || document.getElementById(key);
+      savedScrolls.forEach(({ sel, top }) => {
+        const el = document.querySelector(sel);
         if (el) el.scrollTop = top;
       });
+      if (winScroll > 0) window.scrollTo(0, winScroll);
     });
   }
   if (data.event === 'sequence-warning') {

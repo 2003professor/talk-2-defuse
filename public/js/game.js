@@ -308,6 +308,7 @@ socket.on('solo-start', async (data) => {
   bombState = data.bomb;
   manualData = data.manual;
   gameDifficulty = soloDifficulty;
+  currentManualTab = 'index';
 
   // Play solo intro (only on first round)
   if (soloRound === 1) await playIntro('solo');
@@ -942,6 +943,7 @@ socket.on('game-start', async (data) => {
   } else {
     manualData = data.manual;
     timerValue = data.timer;
+    currentManualTab = 'index';
     renderInstructorView();
     showKeybindOverlay();
   }

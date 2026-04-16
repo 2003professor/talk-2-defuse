@@ -107,6 +107,8 @@ function showScreen(name) {
 
   // Stop menu music when leaving landing/lobby
   if (name !== 'landing' && name !== 'lobby') AudioFX.stopMenuMusic();
+  // Hang up voice chat when returning to landing
+  if (name === 'landing' && typeof VoiceChat !== 'undefined') VoiceChat.hangup();
   // Show room code in game topbar
   if (name === 'game' && roomCode) {
     const el = document.getElementById('game-room-code');

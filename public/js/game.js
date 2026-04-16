@@ -3318,40 +3318,49 @@ function updateMagZoom() {
   const existing = magnifierLens.querySelector('.mag-zoom');
   if (existing) existing.remove();
 
-  // Use game-main in game, or landing screen for landing page
+  // Always use the game-main as the source — covers bomb, manual, everything
   const gameMain = document.querySelector('.game-main');
-  const landingScreen = !gameMain ? document.querySelector('#screen-landing.active') : null;
-  const source = gameMain || landingScreen;
-  if (!source) return;
-  const isLanding = !!landingScreen;
-  const srcRect = source.getBoundingClientRect();
-  const gw = isLanding ? window.innerWidth : srcRect.width;
-  const gh = isLanding ? window.innerHeight : srcRect.height;
+  if (!gameMain) {
+    // Landing page: clone children into a fresh div (avoids .screen CSS baggage)
+    const landing = document.querySelector('#screen-landing');
+    if (!landing) return;
+    const zoomDiv = document.createElement('div');
+    zoomDiv.className = 'mag-zoom';
+    zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#0a0d12;';
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;width:${window.innerWidth}px;height:${window.innerHeight}px;pointer-events:none;transform-origin:0 0;transform:scale(${MAG_ZOOM});left:${(-cx * MAG_ZOOM + MAG_SIZE / 2)}px;top:${(-cy * MAG_ZOOM + MAG_SIZE / 2)}px;overflow:visible;background:#0a0d12;`;
+    for (const child of landing.children) {
+      if (child.id === 'magnifier' || child.classList.contains('landing-bg')) continue;
+      wrapper.appendChild(child.cloneNode(true));
+    }
+    zoomDiv.appendChild(wrapper);
+    magnifierLens.appendChild(zoomDiv);
+    return;
+  }
+  const gmRect = gameMain.getBoundingClientRect();
 
-  const relX = cx - (isLanding ? 0 : srcRect.left);
-  const relY = cy - (isLanding ? 0 : srcRect.top);
+  const relX = cx - gmRect.left;
+  const relY = cy - gmRect.top;
 
   const zoomDiv = document.createElement('div');
   zoomDiv.className = 'mag-zoom';
   zoomDiv.style.cssText = 'position:absolute;inset:0;border-radius:50%;overflow:hidden;';
 
-  magnifier.style.visibility = 'hidden';
-  const clone = source.cloneNode(true);
-  magnifier.style.visibility = '';
-  clone.querySelectorAll('#magnifier, canvas.landing-bg').forEach(el => el.remove());
-  // Override ALL positioning — .screen sets position:absolute;top:0;left:0 which fights our transform
-  clone.style.cssText = [
-    'position:absolute',
-    'top:auto', 'right:auto', 'bottom:auto', 'left:auto', 'inset:auto',
-    `width:${gw}px`, `height:${gh}px`,
-    'pointer-events:none',
-    'transform-origin:0 0',
-    `transform:scale(${MAG_ZOOM})`,
-    `left:${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px`,
-    `top:${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px`,
-    'overflow:visible',
-    isLanding ? 'background:#0a0d12' : '',
-  ].map(s => s ? s + ' !important' : '').join(';');
+  const clone = gameMain.cloneNode(true);
+  // Remove magnifier from clone to avoid recursion
+  const cloneMag = clone.querySelector('#magnifier');
+  if (cloneMag) cloneMag.remove();
+  clone.style.cssText = `
+    position: absolute;
+    width: ${gmRect.width}px;
+    height: ${gmRect.height}px;
+    pointer-events: none;
+    transform-origin: 0 0;
+    transform: scale(${MAG_ZOOM});
+    left: ${(-relX * MAG_ZOOM + MAG_SIZE / 2)}px;
+    top: ${(-relY * MAG_ZOOM + MAG_SIZE / 2)}px;
+    overflow: visible;
+  `;
 
   // Fix scroll offsets and copy canvas data
   const origEls = gameMain.querySelectorAll('*');

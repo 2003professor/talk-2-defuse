@@ -181,7 +181,7 @@ function generateBomb(difficulty, customSettings) {
     hasLitFRK, hasLitCAR, hasLitBOB,
     casingTheme, casingTexture, stencilLabels, modelNumber,
     modules: [],
-    timer: isCustom ? customSettings.timer : difficulty === 'easy' ? 600 : difficulty === 'medium' ? 600 : difficulty === 'flip' ? 360 : 420,
+    timer: isCustom ? customSettings.timer : difficulty === 'easy' ? 420 : difficulty === 'medium' ? 420 : difficulty === 'flip' ? 360 : 300,
     maxStrikes: isCustom ? customSettings.maxStrikes : 3,
     strikes: 0,
     sequenceEnforcement: isCustom ? customSettings.sequenceEnforcement : true,
@@ -203,7 +203,7 @@ function generateBomb(difficulty, customSettings) {
   });
 
   // ── Button Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('button') : (difficulty === 'medium' || isHardLike)) {
+  if (isCustom ? customSettings.modules.includes('button') : true) {
     const buttonColor = pick(BUTTON_COLORS_LIST);
     const buttonLabel = pick(BUTTON_LABELS);
     const buttonIcon = pick(BUTTON_ICONS);
@@ -257,7 +257,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Password Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('password') : (difficulty === 'medium' || isHardLike)) {
+  if (isCustom ? customSettings.modules.includes('password') : true) {
     const word = pick(PASSWORD_WORDS);
     const columns = [];
     for (let i = 0; i < 5; i++) {
@@ -1988,7 +1988,7 @@ function endGame(code, room, won, reason) {
   if (room.timerTimeout) { clearTimeout(room.timerTimeout); room.timerTimeout = null; }
 
   const totalTime = room.difficulty === 'custom' && room.customSettings ? room.customSettings.timer
-    : ({ easy: 600, medium: 600, hard: 420, flip: 360 }[room.difficulty] || 600);
+    : ({ easy: 420, medium: 420, hard: 300, flip: 360 }[room.difficulty] || 420);
   const score = calculateScore(won, room.bomb.timer, room.bomb.strikes, room.difficulty, totalTime);
   const modulesSolved = room.bomb.modules.filter(m => m.solved).length;
   const totalModules = room.bomb.modules.length;

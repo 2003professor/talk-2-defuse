@@ -526,7 +526,7 @@ function getLocalScoreboard() {
 
 // Seed dummy data if leaderboard is empty
 (function seedDummyScores() {
-  if (loadLocalScores().length > 0) return;
+  if (loadLocalScores().length >= 10) return;
   const names = ['Ghost', 'Viper', 'Falcon', 'Echo', 'Raven', 'Nova', 'Blitz', 'Shadow', 'Phoenix', 'Cipher', 'Havoc', 'Specter', 'Lynx', 'Titan', 'Pulse'];
   const diffs = ['easy', 'medium', 'hard', 'flip'];
   const now = Date.now();

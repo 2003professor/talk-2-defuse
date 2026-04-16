@@ -3138,8 +3138,8 @@ function toggleMagnifier() {
 let _magLastFrame = 0;
 function magLoop(now) {
   if (!magActive) return;
-  // Throttle to ~12fps — cloneNode is expensive
-  if (now - _magLastFrame > 80) {
+  // Throttle to ~24fps — balance between smooth and performant
+  if (now - _magLastFrame > 42) {
     _magLastFrame = now;
     updateMagZoom();
   }

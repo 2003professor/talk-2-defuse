@@ -225,10 +225,19 @@ function generateBomb(difficulty, customSettings) {
       ['○', '☀', '♠', '□', '♪', '△', '♦'],
       ['⚡', '○', '♥', '☆', '♣', '★', '△'],
     ];
-    const colIdx = Math.floor(Math.random() * columns.length);
-    const column = columns[colIdx];
-    const selected = shuffle(column).slice(0, 4);
-    const correctOrder = selected.slice().sort((a, b) => column.indexOf(a) - column.indexOf(b));
+    // Pick 4 symbols that uniquely identify exactly one column
+    let colIdx, column, selected, correctOrder;
+    let attempts = 0;
+    do {
+      colIdx = Math.floor(Math.random() * columns.length);
+      column = columns[colIdx];
+      selected = shuffle(column).slice(0, 4);
+      // Check no other column also contains all 4
+      const ambiguous = columns.some((col, i) => i !== colIdx && selected.every(s => col.includes(s)));
+      if (!ambiguous) break;
+      attempts++;
+    } while (attempts < 50);
+    correctOrder = selected.slice().sort((a, b) => column.indexOf(a) - column.indexOf(b));
     bomb.modules.push({
       type: 'keypad', symbols: shuffle(selected),
       correctOrder, pressedSymbols: [], columnIndex: colIdx, solved: false,

@@ -130,6 +130,7 @@ function showScreen(name) {
     AudioFX.stopRoomAmbience();
     resetAllAnnotations();
     window._executorRendered = false;
+    window._magShownThisGame = false;
     Object.keys(redactionCache).forEach(k => delete redactionCache[k]);
   }
 
@@ -383,8 +384,8 @@ function renderSoloView() {
   content.innerHTML = html;
   attachExecutorListeners();
 
-  // Auto-show magnifier for solo
-  if (!magActive) toggleMagnifier();
+  // Auto-show magnifier for solo (only on first render, respect user toggle)
+  if (!window._magShownThisGame) { window._magShownThisGame = true; if (!magActive) toggleMagnifier(); }
   // Annotations + page effects for solo
   applyRedactions();
   applyPageDamage();
@@ -1613,8 +1614,8 @@ function renderInstructorView() {
   content.innerHTML = html;
 
   // Book guide removed — unified guide triggered from topbar
-  // Auto-show magnifier for instructor
-  if (!magActive) toggleMagnifier();
+  // Auto-show magnifier for instructor (only on first render, respect user toggle)
+  if (!window._magShownThisGame) { window._magShownThisGame = true; if (!magActive) toggleMagnifier(); }
   // Apply initial redactions and page damage
   applyRedactions();
   applyPageDamage();

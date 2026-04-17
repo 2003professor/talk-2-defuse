@@ -3662,14 +3662,12 @@ input[type="text"].input-error {
 /* ══════════════════════ ON-BOMB TIMER & STRIKES ══════════════════════ */
 .bomb-timer-panel {
   display: flex; align-items: center; justify-content: center;
-  margin: 0 16px 8px; padding: 10px 16px;
+  margin: 0 20px 8px; padding: 10px 16px;
   background: #0a0c10;
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 6px;
-  position: relative; z-index: 2;
+  position: relative; z-index: 1;
   box-shadow: inset 0 1px 4px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.03);
-  transform-style: flat;
-  transform: translateZ(8px);
 }
 .bomb-timer-display {
   font-family: var(--font-mono); font-size: 22px; font-weight: 700;

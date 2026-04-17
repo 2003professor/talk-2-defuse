@@ -440,130 +440,136 @@
       </div>
 
       <div class="lobby-body">
-        <div class="lobby-players">
-          <h2>Players</h2>
-          <div id="player-slots" class="player-slots">
-            <!-- Filled dynamically -->
+        <div class="lobby-col lobby-col-left">
+          <div class="lobby-players">
+            <h2>Players</h2>
+            <div id="player-slots" class="player-slots">
+              <!-- Filled dynamically -->
+            </div>
+          </div>
+
+          <div class="lobby-roles">
+            <h2>Choose Your Role</h2>
+            <div class="role-select">
+              <button class="btn btn-role" data-role="instructor">
+                <span class="role-icon">📖</span>
+                <span class="role-name">Instructor</span>
+                <span class="role-desc">Read the manual, give instructions</span>
+              </button>
+              <button class="btn btn-role" data-role="executor">
+                <span class="role-icon">💣</span>
+                <span class="role-name">Executor</span>
+                <span class="role-desc">See the bomb, follow instructions</span>
+              </button>
+            </div>
+            <div id="switch-request-area" class="switch-request-area hidden">
+              <button id="btn-request-switch" class="btn btn-link btn-switch">🔄 Request Role Switch</button>
+              <span id="switch-status" class="switch-status"></span>
+            </div>
           </div>
         </div>
 
-        <div class="lobby-settings">
-          <h2>Choose Your Role</h2>
-          <div class="role-select">
-            <button class="btn btn-role" data-role="instructor">
-              <span class="role-icon">📖</span>
-              <span class="role-name">Instructor</span>
-              <span class="role-desc">Read the manual, give instructions</span>
-            </button>
-            <button class="btn btn-role" data-role="executor">
-              <span class="role-icon">💣</span>
-              <span class="role-name">Executor</span>
-              <span class="role-desc">See the bomb, follow instructions</span>
-            </button>
-          </div>
-          <div id="switch-request-area" class="switch-request-area hidden">
-            <button id="btn-request-switch" class="btn btn-link btn-switch">🔄 Request Role Switch</button>
-            <span id="switch-status" class="switch-status"></span>
-          </div>
+        <div class="lobby-col lobby-col-right">
+          <div class="lobby-settings">
+            <h2>Difficulty</h2>
+            <div class="difficulty-select">
+              <button class="btn btn-diff active" data-diff="easy">
+                <strong>Easy</strong>
+                <span>3 modules · 7 min · 4 strikes</span>
+              </button>
+              <button class="btn btn-diff" data-diff="medium">
+                <strong>Medium</strong>
+                <span>5 modules · 7 min · 4 strikes</span>
+              </button>
+              <button class="btn btn-diff" data-diff="hard">
+                <strong>Hard</strong>
+                <span>9 modules · 5 min · Mistakes speed up timer</span>
+              </button>
+              <button class="btn btn-diff btn-diff-flip" data-diff="flip">
+                <strong>⚡ Flip</strong>
+                <span>9 modules · 6 min · Roles swap!</span>
+              </button>
+              <button class="btn btn-diff" data-diff="custom">
+                <strong>Custom</strong>
+                <span>Configure your own</span>
+              </button>
+            </div>
 
-          <h2>Difficulty</h2>
-          <div class="difficulty-select">
-            <button class="btn btn-diff active" data-diff="easy">
-              <strong>Easy</strong>
-              <span>3 modules · 7 min · 4 strikes</span>
-            </button>
-            <button class="btn btn-diff" data-diff="medium">
-              <strong>Medium</strong>
-              <span>5 modules · 7 min · 4 strikes</span>
-            </button>
-            <button class="btn btn-diff" data-diff="hard">
-              <strong>Hard</strong>
-              <span>9 modules · 5 min · Mistakes speed up timer</span>
-            </button>
-            <button class="btn btn-diff btn-diff-flip" data-diff="flip">
-              <strong>⚡ Flip</strong>
-              <span>9 modules · 6 min · Roles swap!</span>
-            </button>
-            <button class="btn btn-diff" data-diff="custom">
-              <strong>Custom</strong>
-              <span>Configure your own</span>
-            </button>
-          </div>
-
-          <div id="custom-settings" class="custom-settings hidden">
-            <h3>Custom Settings</h3>
-            <div class="custom-row">
-              <label>Start from preset</label>
-              <div class="custom-presets">
-                <button class="btn btn-tiny custom-preset-btn" data-preset="easy">Easy</button>
-                <button class="btn btn-tiny custom-preset-btn" data-preset="medium">Medium</button>
-                <button class="btn btn-tiny custom-preset-btn" data-preset="hard">Hard</button>
-                <button class="btn btn-tiny custom-preset-btn" data-preset="flip">Flip</button>
+            <div id="custom-settings" class="custom-settings hidden">
+              <h3>Custom Settings</h3>
+              <div class="custom-row">
+                <label>Start from preset</label>
+                <div class="custom-presets">
+                  <button class="btn btn-tiny custom-preset-btn" data-preset="easy">Easy</button>
+                  <button class="btn btn-tiny custom-preset-btn" data-preset="medium">Medium</button>
+                  <button class="btn btn-tiny custom-preset-btn" data-preset="hard">Hard</button>
+                  <button class="btn btn-tiny custom-preset-btn" data-preset="flip">Flip</button>
+                </div>
               </div>
-            </div>
-            <div class="custom-row">
-              <label>Timer (seconds)</label>
-              <div class="custom-slider-row">
-                <input type="range" id="custom-timer" min="60" max="600" value="300" step="10">
-                <span class="custom-val" id="custom-timer-val">300</span>
+              <div class="custom-row">
+                <label>Timer (seconds)</label>
+                <div class="custom-slider-row">
+                  <input type="range" id="custom-timer" min="60" max="600" value="300" step="10">
+                  <span class="custom-val" id="custom-timer-val">300</span>
+                </div>
               </div>
-            </div>
-            <div class="custom-row">
-              <label>Max Strikes</label>
-              <div class="custom-slider-row">
-                <input type="range" id="custom-strikes" min="1" max="5" value="3">
-                <span class="custom-val" id="custom-strikes-val">3</span>
+              <div class="custom-row">
+                <label>Max Strikes</label>
+                <div class="custom-slider-row">
+                  <input type="range" id="custom-strikes" min="1" max="5" value="3">
+                  <span class="custom-val" id="custom-strikes-val">3</span>
+                </div>
               </div>
-            </div>
-            <div class="custom-row">
-              <label>Wire Count</label>
-              <div class="custom-slider-row">
-                <input type="range" id="custom-wires" min="3" max="6" value="4">
-                <span class="custom-val" id="custom-wires-val">4</span>
+              <div class="custom-row">
+                <label>Wire Count</label>
+                <div class="custom-slider-row">
+                  <input type="range" id="custom-wires" min="3" max="6" value="4">
+                  <span class="custom-val" id="custom-wires-val">4</span>
+                </div>
               </div>
-            </div>
-            <div class="custom-row">
-              <label>Modules</label>
-              <div class="custom-checkboxes">
-                <label class="custom-checkbox disabled"><input type="checkbox" checked disabled> Wires</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-button" checked> Button</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-keypad" checked> Keypad</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-simon"> Simon Says</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-morse"> Morse Code</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-memory"> Memory</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-maze"> Maze</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-password"> Password</label>
-                <label class="custom-checkbox"><input type="checkbox" id="custom-mod-knob"> Knob</label>
+              <div class="custom-row">
+                <label>Modules</label>
+                <div class="custom-checkboxes">
+                  <label class="custom-checkbox disabled"><input type="checkbox" checked disabled> Wires</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-button" checked> Button</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-keypad" checked> Keypad</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-simon"> Simon Says</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-morse"> Morse Code</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-memory"> Memory</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-maze"> Maze</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-password"> Password</label>
+                  <label class="custom-checkbox"><input type="checkbox" id="custom-mod-knob"> Knob</label>
+                </div>
+                <div class="custom-random-row">
+                  <input type="range" id="custom-random-count" min="1" max="9" value="5" step="1">
+                  <span class="custom-val" id="custom-random-count-val">5</span>
+                  <button class="btn btn-tiny" id="btn-random-modules">Surprise Me</button>
+                </div>
+                <div id="random-modules-active" class="random-active-label hidden">
+                  <span id="random-active-text"></span>
+                  <button class="btn btn-link" id="btn-cancel-random" style="font-size:11px;margin-left:8px">Choose manually</button>
+                </div>
               </div>
-              <div class="custom-random-row">
-                <input type="range" id="custom-random-count" min="1" max="9" value="5" step="1">
-                <span class="custom-val" id="custom-random-count-val">5</span>
-                <button class="btn btn-tiny" id="btn-random-modules">Surprise Me</button>
+              <div class="custom-row">
+                <label>Sequence Enforcement</label>
+                <div class="custom-toggle-row">
+                  <span class="toggle-hint">Wrong order = strike</span>
+                  <label class="toggle-switch"><input type="checkbox" id="custom-sequence" checked><span class="toggle-slider"></span></label>
+                </div>
               </div>
-              <div id="random-modules-active" class="random-active-label hidden">
-                <span id="random-active-text"></span>
-                <button class="btn btn-link" id="btn-cancel-random" style="font-size:11px;margin-left:8px">Choose manually</button>
+              <div class="custom-row">
+                <label>Strike Timer Speedup</label>
+                <div class="custom-toggle-row">
+                  <span class="toggle-hint">Strikes speed up timer</span>
+                  <label class="toggle-switch"><input type="checkbox" id="custom-speedup" checked><span class="toggle-slider"></span></label>
+                </div>
               </div>
-            </div>
-            <div class="custom-row">
-              <label>Sequence Enforcement</label>
-              <div class="custom-toggle-row">
-                <span class="toggle-hint">Wrong order = strike</span>
-                <label class="toggle-switch"><input type="checkbox" id="custom-sequence" checked><span class="toggle-slider"></span></label>
-              </div>
-            </div>
-            <div class="custom-row">
-              <label>Strike Timer Speedup</label>
-              <div class="custom-toggle-row">
-                <span class="toggle-hint">Strikes speed up timer</span>
-                <label class="toggle-switch"><input type="checkbox" id="custom-speedup" checked><span class="toggle-slider"></span></label>
-              </div>
-            </div>
-            <div class="custom-row">
-              <label>⚡ Flip Mode</label>
-              <div class="custom-toggle-row">
-                <span class="toggle-hint">Roles swap after every solve</span>
-                <label class="toggle-switch"><input type="checkbox" id="custom-flip"><span class="toggle-slider"></span></label>
+              <div class="custom-row">
+                <label>⚡ Flip Mode</label>
+                <div class="custom-toggle-row">
+                  <span class="toggle-hint">Roles swap after every solve</span>
+                  <label class="toggle-switch"><input type="checkbox" id="custom-flip"><span class="toggle-slider"></span></label>
+                </div>
               </div>
             </div>
           </div>

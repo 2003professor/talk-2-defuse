@@ -397,8 +397,8 @@ html, body {
 }
 
 #screen-lobby .lobby-container {
-  max-width: 720px;
-  padding: 40px 32px;
+  max-width: 1100px;
+  padding: 32px 40px;
   animation: landing-panels-enter 0.5s ease-out;
 }
 
@@ -1189,7 +1189,7 @@ input[type="text"].input-error {
 
 /* ══════════════════════ LOBBY ══════════════════════ */
 .lobby-container {
-  margin: auto; max-width: 640px; width: 100%; padding: 32px 24px;
+  margin: auto; max-width: 1100px; width: 100%; padding: 32px 40px;
   display: flex; flex-direction: column; height: 100%; overflow-y: auto;
 }
 .lobby-header { text-align: center; margin-bottom: 24px; }
@@ -1198,7 +1198,11 @@ input[type="text"].input-error {
   font-family: var(--font-mono); font-size: 28px; font-weight: 700;
   color: var(--accent-orange); letter-spacing: 4px;
 }
-.lobby-body { flex: 1; overflow-y: auto; min-height: 0; }
+.lobby-body {
+  flex: 1; overflow-y: auto; min-height: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-content: start;
+}
+.lobby-col { display: flex; flex-direction: column; gap: 0; }
 .lobby-body h2 { font-size: 16px; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
 
 .player-slots {
@@ -1229,9 +1233,9 @@ input[type="text"].input-error {
 .role-name { font-weight: 700; font-size: 16px; }
 .role-desc { font-size: 12px; color: var(--text-dim); }
 
-.difficulty-select { display: flex; gap: 8px; margin-bottom: 24px; }
+.difficulty-select { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
 .btn-diff {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex: 1 1 calc(33% - 8px); min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 12px 8px; background: var(--bg-card); border: 2px solid var(--border);
   border-radius: var(--radius); cursor: pointer; transition: all 0.15s;
 }
@@ -1355,6 +1359,12 @@ input[type="text"].input-error {
 }
 .lobby-link-sep {
   width: 1px; height: 14px; background: var(--border);
+}
+
+/* Responsive — collapse lobby to single column on narrow screens */
+@media (max-width: 800px) {
+  .lobby-container { max-width: 640px; padding: 32px 24px; }
+  .lobby-body { grid-template-columns: 1fr; gap: 0; }
 }
 
 /* ══════════════════════ BRIEFING ══════════════════════ */

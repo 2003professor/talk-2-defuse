@@ -798,48 +798,24 @@ function generateManual(bomb) {
   // ── Procedures Chapter (always present) ──────────────────────
   manual.chapters.procedures = {
     title: 'Field Procedures',
-    sections: [
-      {
-        subtitle: 'Section 1 — Initial Assessment',
-        items: [
-          'Identify bomb shape (round, square, cylindrical, briefcase, or barrel) and report to instructor.',
-          'Read serial number aloud using NATO phonetic alphabet (see Appendix).',
-          'Count batteries and report total.',
-          'Identify all indicator labels and whether each is LIT or UNLIT.',
-          'Identify port types present on the device.',
-          'Cross-reference Index tab to determine Protocol designation.',
-        ],
-      },
-      {
-        subtitle: 'Section 2 — Module Priority',
-        items: [
-          'Modules MUST be solved in the order specified by the Sequence tab.',
-          'Locked modules cannot be interacted with until the previous module is solved.',
-          'Determine the sequence using battery count and serial last digit (see Sequence tab).',
-          'Button: Requires coordination on hold timing — clear comms essential.',
-          'Simon Says: Multi-stage memory — mapping changes with strikes.',
-          'Morse Code: Begin observation early, even while locked — decode the pattern ahead of time.',
-        ],
-      },
-      {
-        subtitle: 'Section 3 — Communication Protocol',
-        natoRef: true,
-        items: [
-          'Use NATO phonetic alphabet for serial numbers and ambiguous letters.',
-          'Confirm colors by repeating: "Color confirmed: [COLOR]."',
-          'Use "Read back" after critical instructions to verify understanding.',
-          'Say "STRIKE" loudly if a mistake occurs — instructor must re-check mappings.',
-        ],
-      },
-      {
-        subtitle: 'Section 4 — Strike Response',
-        strikeTable: true,
-        items: [
-          'After any strike, pause and re-verify the current protocol.',
-          'Simon Says mappings CHANGE with each strike — re-check the table.',
-          'Stay calm. Rushing causes more strikes than careful re-assessment.',
-        ],
-      },
+    blocks: [
+      { type: 'critical', title: 'STEP 1 — IDENTIFY THE PROTOCOL', text: 'Before touching ANY module, the Executor must report ALL bomb details. The Instructor uses the Index tab to find the correct Protocol (Alpha, Bravo, or Charlie). Every module\u2019s rules depend on this.' },
+      { type: 'checklist', title: 'Executor Reports', items: [
+        'Bomb shape (round, square, cylindrical, briefcase, barrel)',
+        'Serial number — use NATO alphabet (see Appendix)',
+        'Battery count',
+        'Indicator labels + whether each is LIT or UNLIT',
+        'Port types present',
+      ]},
+      { type: 'critical', title: 'STEP 2 — DETERMINE THE SEQUENCE', text: 'Open the Sequence tab. Use the battery count and serial last digit to find the correct module solve order. Tell the Executor which module to solve first. Solving out of order causes a STRIKE.' },
+      { type: 'info', title: 'STEP 3 — SOLVE MODULES', text: 'Work through modules in sequence order. For each module, the Executor describes what they see, and the Instructor looks up the rules under the correct Protocol tab.' },
+      { type: 'tips', title: 'Module Tips', items: [
+        { label: 'Button', text: 'If the action is HOLD, a colored strip appears. Coordinate the release timing with the countdown timer.' },
+        { label: 'Simon Says', text: 'Multi-stage — the color mapping changes with strikes. Re-check the table after every strike.' },
+        { label: 'Morse Code', text: 'Start observing the blink pattern early. Count short and long blinks, then report to the Instructor.' },
+        { label: 'Password', text: 'Read available letters for each column. The Instructor cross-references against the word list.' },
+      ]},
+      { type: 'warning', title: 'STRIKES', text: 'Each strike speeds up the timer and skips time. Stay calm — rushing causes more mistakes. After a strike, pause and re-verify.' },
     ],
   };
 

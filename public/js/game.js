@@ -1920,26 +1920,25 @@ function renderManualTab(tab) {
   }
 
   // ── Procedures chapter ──
-  if (tab === 'procedures' && ch.sections) {
-    ch.sections.forEach(sec => {
-      html += `<h3 class="section-subtitle">${sec.subtitle}</h3>`;
-      if (sec.natoRef) {
-        html += '<div class="nato-quick-ref">';
-        ['A-Alpha','B-Bravo','C-Charlie','D-Delta','E-Echo','F-Foxtrot','N-November','O-Oscar','S-Sierra'].forEach(pair => {
-          html += `<span class="nato-pair">${pair}</span>`;
+  if (tab === 'procedures' && ch.blocks) {
+    ch.blocks.forEach(block => {
+      if (block.type === 'critical') {
+        html += `<div class="proc-block proc-critical"><div class="proc-block-title">${block.title}</div><p>${block.text}</p></div>`;
+      } else if (block.type === 'checklist') {
+        html += `<div class="proc-block proc-checklist"><div class="proc-block-title">${block.title}</div><ul>`;
+        block.items.forEach(item => html += `<li>${item}</li>`);
+        html += '</ul></div>';
+      } else if (block.type === 'info') {
+        html += `<div class="proc-block proc-info"><div class="proc-block-title">${block.title}</div><p>${block.text}</p></div>`;
+      } else if (block.type === 'tips') {
+        html += `<div class="proc-block proc-tips"><div class="proc-block-title">${block.title}</div>`;
+        block.items.forEach(tip => {
+          html += `<div class="proc-tip"><strong>${tip.label}</strong> <span>${tip.text}</span></div>`;
         });
         html += '</div>';
+      } else if (block.type === 'warning') {
+        html += `<div class="proc-block proc-warning"><div class="proc-block-title">${block.title}</div><p>${block.text}</p></div>`;
       }
-      if (sec.strikeTable) {
-        html += '<table class="strike-ref-table"><thead><tr><th>Strike</th><th>Speed</th><th>Time Skip</th><th>Effect</th></tr></thead><tbody>';
-        html += '<tr><td>1st</td><td>1.5x</td><td>-15s</td><td>Timer accelerates</td></tr>';
-        html += '<tr><td>2nd</td><td>2.0x</td><td>-25s</td><td>Timer critical speed</td></tr>';
-        html += '<tr><td>3rd</td><td>—</td><td>—</td><td class="strike-fatal">DETONATION</td></tr>';
-        html += '</tbody></table>';
-      }
-      html += '<ol class="procedure-checklist">';
-      sec.items.forEach(item => html += `<li>${item}</li>`);
-      html += '</ol>';
     });
     html += `<div class="page-number">PG ${pageNum}</div>`;
     return html;

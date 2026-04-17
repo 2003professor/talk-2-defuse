@@ -692,10 +692,21 @@ function readCustomSettingsFromUI() {
   if (document.getElementById('custom-mod-maze').checked) customSettings.modules.push('maze');
   if (document.getElementById('custom-mod-password').checked) customSettings.modules.push('password');
   if (document.getElementById('custom-mod-knob').checked) customSettings.modules.push('knob');
+  // Preserve random mode if active
+  if (!randomActiveLabel.classList.contains('hidden') && customSettings.randomModuleCount) {
+    // keep randomModuleCount
+  } else {
+    delete customSettings.randomModuleCount;
+  }
 }
 
 function emitCustomSettings() {
+  const savedRandom = customSettings?.randomModuleCount;
   readCustomSettingsFromUI();
+  if (savedRandom && !randomActiveLabel.classList.contains('hidden')) {
+    customSettings.randomModuleCount = savedRandom;
+    customSettings.modules = ['wires'];
+  }
   socket.emit('update-custom-settings', { customSettings });
 }
 
@@ -718,6 +729,17 @@ function applyCustomSettingsToUI(cs) {
   document.getElementById('custom-sequence').checked = cs.sequenceEnforcement;
   document.getElementById('custom-speedup').checked = cs.strikeSpeedup;
   document.getElementById('custom-flip').checked = cs.flipMode || false;
+  // Handle random mode sync
+  if (cs.randomModuleCount) {
+    moduleCheckboxes.classList.add('hidden');
+    randomActiveLabel.classList.remove('hidden');
+    randomActiveLabel.textContent = `${cs.randomModuleCount} random module${cs.randomModuleCount > 1 ? 's' : ''} will be picked at game start — it's a surprise!`;
+    randomCountSlider.value = cs.randomModuleCount;
+    randomCountVal.textContent = cs.randomModuleCount;
+  } else {
+    moduleCheckboxes.classList.remove('hidden');
+    randomActiveLabel.classList.add('hidden');
+  }
   customSettings = cs;
 }
 
@@ -754,20 +776,31 @@ document.querySelectorAll('.custom-preset-btn').forEach(btn => {
 // Random modules
 const randomCountSlider = document.getElementById('custom-random-count');
 const randomCountVal = document.getElementById('custom-random-count-val');
+const randomActiveLabel = document.getElementById('random-modules-active');
+const moduleCheckboxes = document.querySelector('.custom-checkboxes');
 randomCountSlider.addEventListener('input', () => { randomCountVal.textContent = randomCountSlider.value; });
+
 document.getElementById('btn-random-modules').addEventListener('click', () => {
   const count = +randomCountSlider.value;
-  const allMods = ['button','keypad','simon','morse','memory','maze','password','knob'];
-  // Shuffle and pick (count - 1) since wires is always included
-  const shuffled = allMods.sort(() => Math.random() - 0.5);
-  const picked = shuffled.slice(0, Math.min(count - 1, allMods.length));
-  // Update checkboxes
-  allMods.forEach(m => {
-    const el = document.getElementById('custom-mod-' + m);
-    if (el) el.checked = picked.includes(m);
-  });
+  // Hide checkboxes, show surprise label
+  moduleCheckboxes.classList.add('hidden');
+  randomActiveLabel.classList.remove('hidden');
+  randomActiveLabel.textContent = `${count} random module${count > 1 ? 's' : ''} will be picked at game start — it's a surprise!`;
+  // Store in customSettings
+  customSettings.randomModuleCount = count;
+  customSettings.modules = ['wires']; // placeholder, server will override
   emitCustomSettings();
   AudioFX.click();
+});
+
+// Clicking any module checkbox cancels random mode
+['custom-mod-button','custom-mod-keypad','custom-mod-simon','custom-mod-morse',
+ 'custom-mod-memory','custom-mod-maze','custom-mod-password','custom-mod-knob'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    delete customSettings.randomModuleCount;
+    moduleCheckboxes.classList.remove('hidden');
+    randomActiveLabel.classList.add('hidden');
+  });
 });
 
 document.getElementById('btn-ready').addEventListener('click', () => {

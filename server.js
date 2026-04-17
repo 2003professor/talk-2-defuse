@@ -58,7 +58,8 @@ function validateCustomSettings(cs) {
   const sequenceEnforcement = !!cs.sequenceEnforcement;
   const strikeSpeedup = !!cs.strikeSpeedup;
   const flipMode = !!cs.flipMode;
-  return { timer, maxStrikes, wireCount, modules, sequenceEnforcement, strikeSpeedup, flipMode };
+  const randomModuleCount = cs.randomModuleCount ? Math.max(1, Math.min(9, Math.round(Number(cs.randomModuleCount)))) : null;
+  return { timer, maxStrikes, wireCount, modules, sequenceEnforcement, strikeSpeedup, flipMode, randomModuleCount };
 }
 
 function getScoreboard() {
@@ -206,15 +207,24 @@ function generateBomb(difficulty, customSettings) {
   // For medium: pick 2 random extra modules from the 6 non-core ones
   const extraModules = ['keypad', 'simon', 'memory', 'maze', 'knob', 'morse'];
   const mediumExtras = difficulty === 'medium' ? new Set(pickN(extraModules, 2)) : null;
+  // For custom random mode: pick N random modules server-side (surprise!)
+  let customRandomSet = null;
+  if (isCustom && customSettings.randomModuleCount) {
+    const count = customSettings.randomModuleCount;
+    const allExtra = ['button', 'keypad', 'simon', 'memory', 'maze', 'knob', 'morse', 'password'];
+    const picked = new Set(pickN(allExtra, Math.min(count - 1, allExtra.length))); // -1 because wires is always included
+    customRandomSet = picked;
+  }
   function shouldInclude(modType) {
+    if (isCustom && customRandomSet) return customRandomSet.has(modType);
     if (isCustom) return customSettings.modules.includes(modType);
-    if (isHardLike) return true; // hard/flip get all modules
+    if (isHardLike) return true;
     if (difficulty === 'medium') return mediumExtras.has(modType);
-    return false; // easy doesn't get extra modules
+    return false;
   }
 
-  // ── Button Module (all difficulties) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('button') : true) {
+  // ── Button Module ─────────────────────────
+  if (isCustom ? (customRandomSet ? shouldInclude('button') : customSettings.modules.includes('button')) : true) {
     const buttonColor = pick(BUTTON_COLORS_LIST);
     const buttonLabel = pick(BUTTON_LABELS);
     const buttonIcon = pick(BUTTON_ICONS);
@@ -268,7 +278,7 @@ function generateBomb(difficulty, customSettings) {
   }
 
   // ── Password Module (medium + hard, or custom) ─────────────────────────
-  if (isCustom ? customSettings.modules.includes('password') : true) {
+  if (isCustom ? (customRandomSet ? shouldInclude('password') : customSettings.modules.includes('password')) : true) {
     let word, columns;
     let passAttempts = 0;
     do {

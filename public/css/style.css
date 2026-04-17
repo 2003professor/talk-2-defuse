@@ -1283,6 +1283,21 @@ input[type="text"].input-error {
   font-family: var(--font-mono); font-size: 14px; font-weight: 700;
   color: var(--accent-purple); min-width: 32px; text-align: right;
 }
+.custom-presets {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.custom-preset-btn {
+  font-size: 11px !important; padding: 4px 12px !important; letter-spacing: 1px;
+  border-color: rgba(240,136,62,0.4) !important; color: var(--accent-orange) !important;
+}
+.custom-preset-btn:hover { background: rgba(240,136,62,0.12) !important; }
+.custom-random-row {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  padding-top: 8px; border-top: 1px solid var(--border);
+}
+.custom-random-row label { font-size: 12px; color: var(--text-dim); min-width: 50px; }
+.custom-random-row input[type="range"] { flex: 1; }
+.custom-random-row .custom-val { min-width: 20px; }
 .custom-checkboxes {
   display: flex; flex-wrap: wrap; gap: 6px 12px;
 }

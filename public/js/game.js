@@ -734,6 +734,42 @@ function applyCustomSettingsToUI(cs) {
   document.getElementById(id).addEventListener('change', emitCustomSettings);
 });
 
+// Presets
+const CUSTOM_PRESETS = {
+  easy:   { timer: 420, maxStrikes: 4, wireCount: 4, modules: ['wires','button','password'], sequenceEnforcement: true, strikeSpeedup: true, flipMode: false },
+  medium: { timer: 420, maxStrikes: 4, wireCount: 5, modules: ['wires','button','password','keypad','memory'], sequenceEnforcement: true, strikeSpeedup: true, flipMode: false },
+  hard:   { timer: 300, maxStrikes: 3, wireCount: 5, modules: ['wires','button','keypad','simon','morse','memory','maze','password','knob'], sequenceEnforcement: true, strikeSpeedup: true, flipMode: false },
+  flip:   { timer: 360, maxStrikes: 3, wireCount: 5, modules: ['wires','button','keypad','simon','morse','memory','maze','password','knob'], sequenceEnforcement: true, strikeSpeedup: true, flipMode: true },
+};
+document.querySelectorAll('.custom-preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const preset = CUSTOM_PRESETS[btn.dataset.preset];
+    if (!preset) return;
+    applyCustomSettingsToUI(preset);
+    emitCustomSettings();
+    AudioFX.click();
+  });
+});
+
+// Random modules
+const randomCountSlider = document.getElementById('custom-random-count');
+const randomCountVal = document.getElementById('custom-random-count-val');
+randomCountSlider.addEventListener('input', () => { randomCountVal.textContent = randomCountSlider.value; });
+document.getElementById('btn-random-modules').addEventListener('click', () => {
+  const count = +randomCountSlider.value;
+  const allMods = ['button','keypad','simon','morse','memory','maze','password','knob'];
+  // Shuffle and pick (count - 1) since wires is always included
+  const shuffled = allMods.sort(() => Math.random() - 0.5);
+  const picked = shuffled.slice(0, Math.min(count - 1, allMods.length));
+  // Update checkboxes
+  allMods.forEach(m => {
+    const el = document.getElementById('custom-mod-' + m);
+    if (el) el.checked = picked.includes(m);
+  });
+  emitCustomSettings();
+  AudioFX.click();
+});
+
 document.getElementById('btn-ready').addEventListener('click', () => {
   AudioFX.stopMenuMusic();
   socket.emit('player-ready');

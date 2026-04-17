@@ -3474,15 +3474,24 @@ socket.on('flip-swap', (data) => {
 
 // ══════════════════════ PAGE FLIP HELPER ══════════════════════
 let isFlipping = false;
+let _flipTimer1 = null, _flipTimer2 = null;
 const TAB_ORDER = ['index','overview','procedures','sequence','wires','button','keypad','simon','morse','memory','maze','password','knob','appendix'];
 
 function flipManualPage(newTab, prevTab) {
   const body = document.getElementById('manual-body');
-  if (!body || isFlipping) return;
+  if (!body) return;
+
+  // If already flipping, cancel and start new flip immediately
+  if (isFlipping) {
+    if (_flipTimer1) clearTimeout(_flipTimer1);
+    if (_flipTimer2) clearTimeout(_flipTimer2);
+    body.classList.remove('page-out-left', 'page-out-right', 'page-in-left', 'page-in-right');
+    isFlipping = false;
+  }
+
   isFlipping = true;
   AudioFX.pageFlip();
 
-  // Determine direction based on previous tab position vs new
   const oldIdx = TAB_ORDER.indexOf(prevTab || 'index');
   const newIdx = TAB_ORDER.indexOf(newTab);
   const goingForward = newIdx > oldIdx;
@@ -3490,22 +3499,19 @@ function flipManualPage(newTab, prevTab) {
   const outClass = goingForward ? 'page-out-left' : 'page-out-right';
   const inClass = goingForward ? 'page-in-right' : 'page-in-left';
 
-  // Save annotations for the OLD page before flipping
   saveAnnoPageAs(prevTab || currentManualTab);
 
   body.classList.add(outClass);
-  setTimeout(() => {
+  _flipTimer1 = setTimeout(() => {
     body.scrollTop = 0;
     body.innerHTML = renderManualTab(newTab);
     body.classList.remove(outClass, 'page-torn-corner', 'page-burn-edge');
     body.querySelectorAll('.page-scorch,.page-tear-line').forEach(el => el.remove());
     body.classList.add(inClass);
-    // Apply instructor effects
     applyRedactions();
     applyPageDamage();
-    // Restore annotation canvas for the new page (with that page's saved data)
     setupAnnoCanvas();
-    setTimeout(() => { body.classList.remove(inClass); isFlipping = false; }, 350);
+    _flipTimer2 = setTimeout(() => { body.classList.remove(inClass); isFlipping = false; }, 350);
   }, 230);
 }
 

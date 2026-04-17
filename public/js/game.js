@@ -1092,7 +1092,13 @@ function renderExecutorView() {
   const modCount = bombState.modules.length;
   const rivets = Array(8).fill(RIVET_SVG).join('');
 
-  let html = '<div class="bomb-container">';
+  // ── On-bomb timer & strikes panel (executor only in 2-player) ──
+  let html = '<div class="bomb-timer-panel">';
+  html += `<div id="bomb-timer" class="bomb-timer-display">${formatTimer(timerValue)}</div>`;
+  html += `<div id="bomb-strikes" class="bomb-strikes-display">${renderStrikesHTML(bombState.strikes, gameMaxStrikes)}</div>`;
+  html += '</div>';
+
+  html += '<div class="bomb-container">';
   html += `<div class="bomb-casing ${shapeClass} ${themeClass} ${textureClass}">`;
 
   // Shape-specific decoration
@@ -1166,12 +1172,6 @@ function renderExecutorView() {
 
   // Timer LED on bomb casing
   html += '<div class="bomb-timer-led"></div>';
-
-  // ── On-bomb timer & strikes panel (executor only in 2-player) ──
-  html += '<div class="bomb-timer-panel">';
-  html += `<div id="bomb-timer" class="bomb-timer-display">${formatTimer(timerValue)}</div>`;
-  html += `<div id="bomb-strikes" class="bomb-strikes-display">${renderStrikesHTML(bombState.strikes, gameMaxStrikes)}</div>`;
-  html += '</div>';
 
   // ── Metal Nameplate ──
   html += '<div class="bomb-info-plate">';

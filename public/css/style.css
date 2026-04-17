@@ -2910,6 +2910,22 @@ input[type="text"].input-error {
   letter-spacing: 2px;
 }
 
+.hold-rules-inline {
+  margin-top: 10px; padding: 10px 14px;
+  background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 6px; font-size: 13px; color: #2a3a2a;
+}
+.hold-rules-inline strong { color: #2a2a1e; }
+.strip-rules {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+}
+.strip-rule {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; font-family: var(--font-mono);
+}
+.strip-swatch {
+  display: inline-block; width: 24px; height: 8px; border-radius: 4px;
+}
 .hold-rules-section {
   margin-top: 20px; padding: 16px;
   background: rgba(139,125,60,0.06);

@@ -2003,6 +2003,17 @@ function renderManualTab(tab) {
         html += '<ol class="rule-list">';
         protoData.rules.forEach(r => html += `<li>${r}</li>`);
         html += '</ol>';
+        // Inline hold/release rules so the instructor sees them in context
+        if (ch.holdRules) {
+          html += '<div class="hold-rules-inline">';
+          html += '<strong>If HOLDING — release based on strip color:</strong>';
+          html += '<div class="strip-rules">';
+          html += '<span class="strip-rule"><span class="strip-swatch" style="background:dodgerblue"></span> Blue → timer has a <strong>4</strong></span>';
+          html += '<span class="strip-rule"><span class="strip-swatch" style="background:white;border:1px solid #888"></span> White → timer has a <strong>1</strong></span>';
+          html += '<span class="strip-rule"><span class="strip-swatch" style="background:gold"></span> Yellow → timer has a <strong>5</strong></span>';
+          html += '<span class="strip-rule"><span class="strip-swatch" style="background:crimson"></span> Red → timer has a <strong>1</strong></span>';
+          html += '</div></div>';
+        }
       }
 
       // Memory-style: stages with rules
@@ -2035,12 +2046,7 @@ function renderManualTab(tab) {
       html += '</div>';
     });
 
-    // Hold rules (shared across protocols)
-    if (ch.holdRules) {
-      html += '<div class="hold-rules-section"><h3 class="section-subtitle">If Holding (All Protocols):</h3>';
-      ch.holdRules.forEach(r => html += `<p class="hold-rule">${r}</p>`);
-      html += '</div>';
-    }
+    // Hold rules are now inline within each protocol section
   }
 
   // ── Non-protocol chapters ──

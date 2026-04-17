@@ -1240,6 +1240,21 @@ input[type="text"].input-error {
 .role-name { font-weight: 700; font-size: 16px; }
 .role-desc { font-size: 12px; color: var(--text-dim); }
 
+.lobby-freepass-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; margin-bottom: 16px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.freepass-info { display: flex; flex-direction: column; gap: 2px; margin-right: 12px; }
+.freepass-label {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  letter-spacing: 0.5px;
+}
+.freepass-hint {
+  font-size: 11px; color: var(--text-muted); line-height: 1.4;
+}
+
 .difficulty-select { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
 .btn-diff {
   flex: 1 1 calc(33% - 8px); min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;

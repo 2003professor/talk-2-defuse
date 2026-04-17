@@ -757,6 +757,11 @@ function applyCustomSettingsToUI(cs) {
   document.getElementById(id).addEventListener('change', emitCustomSettings);
 });
 
+// Free Pass toggle (lobby-level, applies to all difficulties)
+document.getElementById('lobby-freepass').addEventListener('change', (e) => {
+  socket.emit('toggle-free-pass', { freePass: e.target.checked });
+});
+
 // Presets
 const CUSTOM_PRESETS = {
   easy:   { timer: 420, maxStrikes: 4, wireCount: 4, modules: ['wires','button','password'], sequenceEnforcement: true, strikeSpeedup: true, flipMode: false },
@@ -821,6 +826,8 @@ socket.on('lobby-update', (state) => {
   setTimeout(updateLobbyVoiceUI, 500);
   setTimeout(updateLobbyVoiceUI, 2000);
   document.querySelectorAll('.btn-diff').forEach(b => b.classList.toggle('active', b.dataset.diff === state.difficulty));
+  // Sync free pass toggle
+  if (state.freePass !== undefined) document.getElementById('lobby-freepass').checked = state.freePass;
   const customPanel = document.getElementById('custom-settings');
   if (state.difficulty === 'custom') {
     customPanel.classList.remove('hidden');
@@ -2729,6 +2736,8 @@ socket.on('back-to-lobby', (state) => {
   // Sync client-side difficulty state from server
   gameDifficulty = state.difficulty || gameDifficulty;
   if (state.customSettings) customSettings = state.customSettings;
+  // Sync free pass toggle
+  if (state.freePass !== undefined) document.getElementById('lobby-freepass').checked = state.freePass;
   // Sync custom settings panel
   const customPanel = document.getElementById('custom-settings');
   if (state.difficulty === 'custom') {

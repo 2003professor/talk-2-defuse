@@ -1280,7 +1280,7 @@ io.on('connection', (socket) => {
     rooms.set(code, {
       players: [{ id: socket.id, name: playerName, role: null, ready: false }],
       bomb: null, state: 'lobby', difficulty: 'easy',
-      customSettings: null,
+      customSettings: null, freePass: true,
       timerTimeout: null, timerSpeed: 1, briefingReady: [], createdAt: Date.now(),
     });
     socket.join(code);
@@ -1391,6 +1391,13 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.roomCode);
     if (!room || room.difficulty !== 'custom') return;
     room.customSettings = validateCustomSettings(customSettings);
+    io.to(socket.roomCode).emit('lobby-update', getLobbyState(room));
+  });
+
+  socket.on('toggle-free-pass', ({ freePass }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    room.freePass = !!freePass;
     io.to(socket.roomCode).emit('lobby-update', getLobbyState(room));
   });
 
@@ -1854,6 +1861,7 @@ function getLobbyState(room) {
   const state = {
     players: room.players.map(p => ({ name: p.name, role: p.role, ready: p.ready })),
     difficulty: room.difficulty,
+    freePass: room.freePass !== false,
   };
   if (room.difficulty === 'custom' && room.customSettings) {
     state.customSettings = room.customSettings;
@@ -2004,9 +2012,10 @@ function checkSequenceViolation(code, room, moduleIndex, socketId) {
     }
   } else {
     // Wrong sequence — pointer stays, player can still resume correct order
-    // Each player gets their own free pass (important for flip mode role swaps)
+    // Free pass: each player gets one warning before strikes (if enabled)
+    const freePassEnabled = room.freePass !== false;
     if (!bomb._sequenceWarnedPlayers) bomb._sequenceWarnedPlayers = {};
-    if (!bomb._sequenceWarnedPlayers[socketId]) {
+    if (freePassEnabled && !bomb._sequenceWarnedPlayers[socketId]) {
       bomb._sequenceWarnedPlayers[socketId] = true;
       emitGameUpdate(code, room, {
         event: 'sequence-warning',

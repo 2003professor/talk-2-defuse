@@ -296,13 +296,29 @@ function generateBomb(difficulty, customSettings) {
   if (shouldInclude('maze')) {
     const layout = pick(MAZE_LAYOUTS);
     const wallSet = getMazeWallSet(layout);
-    // Pick random start and end that aren't the same or markers
+    // Pick random start and end that aren't the same or markers, and have a valid path
     const occupied = new Set(layout.markers.map(m => `${m.row},${m.col}`));
-    let start, end;
-    do { start = { row: Math.floor(Math.random() * 6), col: Math.floor(Math.random() * 6) }; }
-    while (occupied.has(`${start.row},${start.col}`));
-    do { end = { row: Math.floor(Math.random() * 6), col: Math.floor(Math.random() * 6) }; }
-    while (end.row === start.row && end.col === start.col || occupied.has(`${end.row},${end.col}`));
+    let start, end, pathExists = false;
+    do {
+      do { start = { row: Math.floor(Math.random() * 6), col: Math.floor(Math.random() * 6) }; }
+      while (occupied.has(`${start.row},${start.col}`));
+      do { end = { row: Math.floor(Math.random() * 6), col: Math.floor(Math.random() * 6) }; }
+      while ((end.row === start.row && end.col === start.col) || occupied.has(`${end.row},${end.col}`));
+      // BFS to verify path exists
+      const visited = new Set([`${start.row},${start.col}`]);
+      const queue = [[start.row, start.col]];
+      while (queue.length) {
+        const [r, c] = queue.shift();
+        if (r === end.row && c === end.col) { pathExists = true; break; }
+        for (const [dr, dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+          const nr = r+dr, nc = c+dc;
+          if (nr<0||nr>=6||nc<0||nc>=6||visited.has(`${nr},${nc}`)) continue;
+          if (isWallBlocking(wallSet, r, c, nr, nc)) continue;
+          visited.add(`${nr},${nc}`);
+          queue.push([nr, nc]);
+        }
+      }
+    } while (!pathExists);
     bomb.modules.push({
       type: 'maze', grid: 6, walls: layout.walls,
       wallSet: Array.from(wallSet), // serialize for checking
@@ -535,15 +551,15 @@ const PASSWORD_WORDS = [
 
 // ── Maze Layouts (9 mazes, identified by 2 marker positions) ──
 const MAZE_LAYOUTS = [
-  { markers: [{row:0,col:1},{row:5,col:2}], walls: [[0,0,'d'],[0,1,'r'],[0,3,'d'],[0,4,'d'],[1,0,'r'],[1,2,'d'],[1,3,'r'],[1,5,'d'],[2,0,'d'],[2,1,'r'],[2,2,'r'],[2,4,'d'],[3,0,'r'],[3,2,'d'],[3,3,'r'],[3,4,'r'],[4,1,'d'],[4,2,'r'],[4,4,'d'],[5,1,'r'],[5,3,'r']] },
-  { markers: [{row:1,col:4},{row:3,col:0}], walls: [[0,1,'d'],[0,2,'r'],[0,4,'d'],[1,0,'d'],[1,1,'r'],[1,3,'d'],[1,4,'r'],[2,1,'d'],[2,2,'r'],[2,3,'r'],[2,5,'d'],[3,0,'r'],[3,2,'d'],[3,4,'d'],[4,0,'d'],[4,1,'r'],[4,3,'r'],[4,4,'r'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
-  { markers: [{row:2,col:3},{row:4,col:1}], walls: [[0,0,'d'],[0,2,'d'],[0,3,'r'],[0,5,'d'],[1,0,'r'],[1,1,'d'],[1,3,'d'],[1,4,'r'],[2,0,'d'],[2,2,'r'],[2,4,'d'],[3,1,'d'],[3,2,'d'],[3,3,'r'],[3,5,'d'],[4,0,'r'],[4,1,'r'],[4,3,'d'],[5,1,'r'],[5,3,'r'],[5,4,'r']] },
-  { markers: [{row:0,col:0},{row:3,col:5}], walls: [[0,1,'d'],[0,3,'d'],[0,4,'r'],[1,0,'r'],[1,2,'r'],[1,3,'r'],[1,5,'d'],[2,0,'d'],[2,1,'d'],[2,3,'r'],[2,4,'d'],[3,1,'r'],[3,2,'d'],[3,4,'r'],[4,0,'d'],[4,2,'r'],[4,3,'d'],[4,5,'d'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
-  { markers: [{row:1,col:1},{row:4,col:4}], walls: [[0,0,'d'],[0,2,'r'],[0,4,'d'],[0,5,'d'],[1,1,'d'],[1,2,'d'],[1,3,'r'],[2,0,'r'],[2,2,'r'],[2,4,'d'],[3,0,'d'],[3,1,'r'],[3,3,'d'],[3,4,'r'],[4,1,'d'],[4,2,'r'],[4,5,'d'],[5,0,'r'],[5,2,'r'],[5,3,'r']] },
-  { markers: [{row:2,col:0},{row:5,col:5}], walls: [[0,1,'d'],[0,2,'r'],[0,4,'d'],[1,0,'d'],[1,2,'d'],[1,3,'r'],[1,5,'d'],[2,1,'r'],[2,3,'d'],[2,4,'r'],[3,0,'r'],[3,1,'d'],[3,3,'r'],[3,5,'d'],[4,0,'d'],[4,2,'d'],[4,3,'r'],[4,4,'r'],[5,1,'r'],[5,3,'r']] },
-  { markers: [{row:0,col:4},{row:4,col:2}], walls: [[0,0,'d'],[0,2,'d'],[0,3,'r'],[1,0,'r'],[1,1,'d'],[1,4,'d'],[1,5,'d'],[2,0,'d'],[2,2,'r'],[2,3,'d'],[2,4,'r'],[3,1,'r'],[3,2,'r'],[3,4,'d'],[4,0,'r'],[4,1,'d'],[4,3,'r'],[4,5,'d'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
-  { markers: [{row:3,col:3},{row:5,col:0}], walls: [[0,0,'d'],[0,1,'r'],[0,4,'d'],[0,5,'d'],[1,1,'d'],[1,2,'r'],[1,4,'r'],[2,0,'r'],[2,2,'d'],[2,3,'r'],[2,5,'d'],[3,0,'d'],[3,1,'r'],[3,4,'d'],[4,0,'r'],[4,2,'d'],[4,3,'r'],[4,4,'r'],[5,1,'r'],[5,3,'r']] },
-  { markers: [{row:1,col:2},{row:3,col:4}], walls: [[0,0,'d'],[0,3,'d'],[0,4,'r'],[1,0,'r'],[1,1,'d'],[1,3,'r'],[1,5,'d'],[2,0,'d'],[2,2,'r'],[2,3,'d'],[2,4,'r'],[3,1,'d'],[3,2,'r'],[3,5,'d'],[4,0,'r'],[4,1,'r'],[4,3,'d'],[4,4,'r'],[5,0,'r'],[5,2,'r'],[5,4,'r']] },
+  { markers: [{row:2,col:1},{row:5,col:2}], walls: [[0,0,'d'],[0,1,'d'],[0,2,'d'],[0,3,'d'],[0,4,'d'],[1,2,'r'],[1,2,'d'],[1,4,'d'],[1,5,'d'],[2,0,'r'],[2,2,'r'],[2,3,'r'],[2,4,'d'],[3,1,'r'],[3,1,'d'],[3,2,'d'],[3,3,'r'],[3,3,'d'],[4,0,'r'],[4,1,'d'],[4,2,'d'],[4,4,'r'],[4,4,'d'],[5,3,'r']] },
+  { markers: [{row:2,col:4},{row:5,col:5}], walls: [[0,0,'r'],[0,1,'d'],[0,2,'r'],[1,0,'d'],[1,2,'r'],[1,3,'r'],[1,5,'d'],[2,1,'r'],[2,1,'d'],[2,2,'d'],[2,3,'r'],[2,3,'d'],[2,4,'d'],[3,0,'d'],[3,1,'r'],[3,3,'d'],[3,4,'r'],[4,1,'r'],[4,1,'d'],[4,2,'r'],[4,4,'r'],[4,4,'d'],[5,2,'r']] },
+  { markers: [{row:2,col:5},{row:5,col:4}], walls: [[0,0,'d'],[0,1,'d'],[0,2,'d'],[0,3,'r'],[0,5,'d'],[1,1,'d'],[1,3,'d'],[2,0,'r'],[2,2,'r'],[2,3,'d'],[2,4,'r'],[2,4,'d'],[3,0,'d'],[3,1,'r'],[3,1,'d'],[3,2,'d'],[3,3,'d'],[3,4,'d'],[4,1,'r'],[4,1,'d'],[4,4,'r'],[4,4,'d'],[5,2,'r']] },
+  { markers: [{row:2,col:5},{row:4,col:3}], walls: [[0,0,'d'],[0,1,'r'],[0,3,'d'],[0,4,'d'],[1,1,'d'],[1,2,'r'],[1,4,'r'],[1,5,'d'],[2,0,'r'],[2,1,'d'],[2,2,'d'],[2,3,'r'],[2,3,'d'],[2,4,'d'],[3,0,'r'],[3,2,'r'],[3,4,'d'],[4,0,'r'],[4,1,'r'],[4,2,'d'],[4,3,'r'],[4,3,'d'],[4,5,'d'],[5,1,'r']] },
+  { markers: [{row:2,col:3},{row:3,col:1}], walls: [[0,0,'d'],[0,1,'r'],[0,2,'d'],[0,4,'d'],[1,1,'r'],[1,1,'d'],[1,3,'r'],[2,0,'r'],[2,2,'r'],[2,2,'d'],[2,3,'r'],[2,4,'r'],[3,0,'r'],[3,1,'r'],[3,2,'r'],[3,3,'r'],[3,4,'r'],[4,0,'r'],[4,1,'r'],[4,2,'r'],[4,3,'d'],[4,4,'r'],[4,4,'d'],[5,1,'r']] },
+  { markers: [{row:2,col:3},{row:5,col:3}], walls: [[0,0,'d'],[0,1,'r'],[0,3,'r'],[1,0,'r'],[1,1,'d'],[1,2,'r'],[1,2,'d'],[1,3,'d'],[1,4,'r'],[1,4,'d'],[2,1,'d'],[2,2,'d'],[2,3,'r'],[2,5,'d'],[3,0,'r'],[3,2,'r'],[3,4,'r'],[3,4,'d'],[4,0,'r'],[4,1,'r'],[4,2,'d'],[4,3,'r'],[5,1,'r']] },
+  { markers: [{row:0,col:4},{row:5,col:2}], walls: [[0,1,'d'],[0,2,'d'],[0,4,'r'],[1,0,'r'],[1,2,'d'],[1,3,'r'],[1,4,'r'],[2,0,'d'],[2,1,'r'],[2,1,'d'],[2,3,'r'],[2,4,'d'],[3,1,'d'],[3,2,'d'],[3,3,'d'],[3,4,'d'],[3,5,'d'],[4,0,'d'],[4,1,'d'],[4,2,'d'],[4,3,'d'],[4,4,'r']] },
+  { markers: [{row:0,col:4},{row:3,col:5}], walls: [[0,0,'d'],[0,1,'r'],[0,4,'d'],[0,5,'d'],[1,1,'r'],[1,1,'d'],[1,2,'d'],[1,4,'d'],[2,0,'r'],[2,2,'r'],[2,3,'d'],[2,4,'r'],[2,4,'d'],[3,0,'d'],[3,1,'r'],[3,1,'d'],[3,2,'d'],[3,3,'d'],[3,4,'d'],[4,0,'r'],[4,2,'r'],[4,4,'r'],[5,1,'r'],[5,3,'r']] },
+  { markers: [{row:1,col:2},{row:4,col:0}], walls: [[0,0,'d'],[0,1,'d'],[0,2,'d'],[0,3,'d'],[0,4,'d'],[1,0,'r'],[1,2,'d'],[1,4,'r'],[1,4,'d'],[2,0,'r'],[2,1,'r'],[2,3,'r'],[2,3,'d'],[2,5,'d'],[3,0,'r'],[3,1,'r'],[3,2,'r'],[3,4,'r'],[4,1,'r'],[4,1,'d'],[4,3,'r'],[4,3,'d'],[4,4,'d']] },
 ];
 
 // Convert maze wall shorthand to full wall set: [row, col, 'd'|'r'] = wall below or right of cell

@@ -4340,6 +4340,21 @@ topbarTitle.addEventListener('click', (e) => {
 });
 document.addEventListener('click', () => topbarDropdown.classList.add('hidden'));
 
+document.getElementById('btn-abort-mission').addEventListener('click', () => {
+  topbarDropdown.classList.add('hidden');
+  if (isSoloMode) {
+    // Solo: just go back to landing
+    exitSoloMode();
+    socket.disconnect();
+    socket.connect();
+    showScreen('landing');
+    if (settings.musicVolume > 0) AudioFX.menuMusic();
+    return;
+  }
+  // 2-player: abort back to lobby, keep voice chat alive
+  socket.emit('play-again', {});
+});
+
 document.getElementById('btn-exit-game').addEventListener('click', () => {
   topbarDropdown.classList.add('hidden');
   exitSoloMode();

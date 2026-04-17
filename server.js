@@ -1902,7 +1902,7 @@ function addStrike(code, room, message) {
 
   if (room.bomb.strikeSpeedup) {
     // Speed up timer + skip time
-    const speedLevels = { 1: 1.5, 2: 2.0 };
+    const speedLevels = { 1: 1.25, 2: 1.5 };
     room.timerSpeed = speedLevels[room.bomb.strikes] || 2;
     const skipAmounts = { 1: 15, 2: 25 };
     const skip = skipAmounts[room.bomb.strikes] || 0;

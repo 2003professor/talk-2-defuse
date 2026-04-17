@@ -1846,12 +1846,12 @@ function renderManualTab(tab) {
   if (tab === 'index') {
     let html = `<div class="page-header"><div class="page-header-icon">${BOMB_SVG}</div><div><div class="page-header-title">Bomb Type Index</div><div class="page-header-sub">Cross-reference with partner description to identify device</div></div></div>`;
     html += '<p class="index-desc">Ask your partner for: shape, size, serial number, indicators (which are LIT — marked with *), battery count, and port types. Match to identify the bomb. The <strong>PROTOCOL</strong> determines which defusal rules to follow!</p>';
-    html += '<table class="bomb-index-table"><thead><tr><th>Serial</th><th>Protocol</th><th>Shape</th><th>Size</th><th>Indicators</th><th>Batt</th><th>Ports</th><th>Modules</th></tr></thead><tbody>';
+    html += '<table class="bomb-index-table"><thead><tr><th>Serial</th><th>Protocol</th><th>Shape</th><th>Size</th><th>Indicators</th><th>Batt</th><th>Ports</th></tr></thead><tbody>';
     manualData.bombIndex.forEach(entry => {
       const protoClass = `protocol-cell protocol-cell-${entry.protocol.toLowerCase()}`;
       const r = entry.redacted || [];
       const rc = (field, val) => r.includes(field) ? '<span class="redacted-perm">██████</span>' : val;
-      html += `<tr><td><strong>${esc(entry.serial)}</strong></td><td><span class="${protoClass}">${entry.protocol}</span></td><td>${rc('shape', cap(entry.shape))}</td><td>${rc('size', cap(entry.size))}</td><td class="small-text">${rc('indicators', esc(entry.indicators))}</td><td>${rc('batteries', entry.batteries)}</td><td class="small-text">${rc('ports', esc(entry.ports))}</td><td class="small-text">${entry.modules.map(cap).join(', ')}</td></tr>`;
+      html += `<tr><td><strong>${esc(entry.serial)}</strong></td><td><span class="${protoClass}">${entry.protocol}</span></td><td>${rc('shape', cap(entry.shape))}</td><td>${rc('size', cap(entry.size))}</td><td class="small-text">${rc('indicators', esc(entry.indicators))}</td><td>${rc('batteries', entry.batteries)}</td><td class="small-text">${rc('ports', esc(entry.ports))}</td></tr>`;
     });
     html += '</tbody></table>';
     html += `<div class="page-number">PG ${pageNum}</div>`;

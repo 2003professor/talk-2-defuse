@@ -1170,8 +1170,14 @@ function renderExecutorView() {
   // ── Metal Nameplate ──
   html += '<div class="bomb-info-plate">';
   // ── On-bomb timer & strikes (executor only in 2-player) ──
+  const timerClasses = ['bomb-timer-display'];
+  if (timerSpeed > 1) timerClasses.push('speed-up');
+  if (timerValue <= 10) timerClasses.push('danger');
+  else if (timerValue <= 30) timerClasses.push('warning');
+  let timerText = formatTimer(timerValue);
+  if (timerSpeed > 1) timerText += ` x${timerSpeed}`;
   html += '<div class="bomb-timer-panel">';
-  html += `<div id="bomb-timer" class="bomb-timer-display">${formatTimer(timerValue)}</div>`;
+  html += `<div id="bomb-timer" class="${timerClasses.join(' ')}">${timerText}</div>`;
   html += `<div id="bomb-strikes" class="bomb-strikes-display">${renderStrikesHTML(bombState.strikes, gameMaxStrikes)}</div>`;
   html += '</div>';
   html += '<span class="plate-corner-bl"></span><span class="plate-corner-br"></span>';

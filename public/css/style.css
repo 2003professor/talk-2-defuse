@@ -3692,7 +3692,7 @@ input[type="text"].input-error {
 }
 
 /* Hide topbar elements when shown on bomb */
-.topbar-hidden { opacity: 0; pointer-events: none; }
+.topbar-hidden { visibility: hidden; pointer-events: none; }
 
 /* ══════════════════════ RESPONSIVE ══════════════════════ */
 @media (max-width: 768px) {

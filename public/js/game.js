@@ -4330,19 +4330,8 @@ function animateModuleEntrance() {
   });
 }
 
-// ══════════════════════ TOPBAR EXIT MENU ══════════════════════
-const topbarTitle = document.getElementById('topbar-title');
-const topbarDropdown = document.getElementById('topbar-dropdown');
-
-topbarTitle.addEventListener('click', (e) => {
-  e.stopPropagation();
-  topbarDropdown.classList.toggle('hidden');
-  AudioFX.click();
-});
-document.addEventListener('click', () => topbarDropdown.classList.add('hidden'));
-
+// ══════════════════════ TOPBAR BUTTONS ══════════════════════
 document.getElementById('btn-abort-mission').addEventListener('click', () => {
-  topbarDropdown.classList.add('hidden');
   if (isSoloMode) {
     // Solo: just go back to landing
     exitSoloMode();
@@ -4357,7 +4346,6 @@ document.getElementById('btn-abort-mission').addEventListener('click', () => {
 });
 
 document.getElementById('btn-exit-game').addEventListener('click', () => {
-  topbarDropdown.classList.add('hidden');
   exitSoloMode();
   reconnectData = null;
   roomCode = '';

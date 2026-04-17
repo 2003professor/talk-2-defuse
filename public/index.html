@@ -585,10 +585,6 @@
         <div class="topbar-left">
           <div class="topbar-title-wrap">
             <span class="topbar-title" id="topbar-title">TALK 2 DEFUSE</span>
-            <div class="topbar-dropdown hidden" id="topbar-dropdown">
-              <button class="topbar-dropdown-item" id="btn-abort-mission">⚠ Abort Mission</button>
-              <button class="topbar-dropdown-item" id="btn-exit-game">Exit to Menu</button>
-            </div>
           </div>
           <span id="game-bomb-type" class="bomb-type-badge">Bomb: ???</span>
           <span id="game-room-code" class="room-code-badge" title="Room code — share to rejoin"></span>
@@ -599,6 +595,8 @@
         </div>
         <div class="topbar-right">
           <div id="game-strikes" class="strikes-display"></div>
+          <button id="btn-abort-mission" class="btn btn-tiny btn-abort" title="Abort Mission — return to lobby">Abort</button>
+          <button id="btn-exit-game" class="btn btn-tiny btn-exit" title="Exit to main menu">Exit</button>
           <button id="btn-guide-ingame" class="btn btn-tiny guide-topbar-btn" aria-label="Game Guide" title="Game Guide">📋 Guide</button>
           <button id="btn-help-ingame" class="btn btn-tiny" aria-label="Help">?</button>
           <button id="btn-settings-ingame" class="btn-settings-sm" title="Settings" aria-label="Settings">

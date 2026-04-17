@@ -3987,6 +3987,16 @@ body.colorblind .cb-label {
 }
 
 /* ── Guide Buttons ── */
+.btn-abort {
+  color: var(--accent-yellow) !important; border-color: rgba(210,153,34,0.4) !important;
+  font-size: 11px !important; letter-spacing: 1px; font-weight: 700;
+}
+.btn-abort:hover { background: rgba(210,153,34,0.15) !important; }
+.btn-exit {
+  color: var(--accent-red) !important; border-color: rgba(220,53,69,0.4) !important;
+  font-size: 11px !important; letter-spacing: 1px; font-weight: 700;
+}
+.btn-exit:hover { background: rgba(220,53,69,0.15) !important; }
 .guide-topbar-btn {
   color: var(--accent-yellow) !important; border-color: rgba(210,153,34,0.4) !important;
   font-size: 12px !important;

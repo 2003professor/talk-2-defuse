@@ -269,14 +269,33 @@ function generateBomb(difficulty, customSettings) {
 
   // ── Password Module (medium + hard, or custom) ─────────────────────────
   if (isCustom ? customSettings.modules.includes('password') : true) {
-    const word = pick(PASSWORD_WORDS);
-    const columns = [];
-    for (let i = 0; i < 5; i++) {
-      const correctLetter = word[i];
-      const pool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => l !== correctLetter);
-      const distractors = pickN(pool, 5);
-      columns.push(shuffle([correctLetter, ...distractors]));
-    }
+    let word, columns;
+    let passAttempts = 0;
+    do {
+      word = pick(PASSWORD_WORDS);
+      columns = [];
+      // Find letters that would allow other words to match — exclude them
+      const otherWords = PASSWORD_WORDS.filter(w => w !== word);
+      for (let i = 0; i < 5; i++) {
+        const correctLetter = word[i];
+        // Exclude letters from other words at this position that could cause ambiguity
+        const conflicting = new Set(otherWords.filter(w => {
+          // Check if this word could still match all OTHER columns
+          for (let j = 0; j < 5; j++) {
+            if (j === i) continue;
+            if (columns[j] && !columns[j].includes(w[j])) return false;
+          }
+          return true;
+        }).map(w => w[i]));
+        const pool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => l !== correctLetter && !conflicting.has(l));
+        const distractors = pickN(pool.length >= 5 ? pool : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => l !== correctLetter), 5);
+        columns.push(shuffle([correctLetter, ...distractors]));
+      }
+      // Verify exactly one word matches
+      const matches = PASSWORD_WORDS.filter(w => columns.every((col, i) => col.includes(w[i])));
+      if (matches.length === 1) break;
+      passAttempts++;
+    } while (passAttempts < 20);
     bomb.modules.push({
       type: 'password', columns, correctWord: word,
       currentLetters: [0, 0, 0, 0, 0], solved: false,

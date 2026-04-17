@@ -1092,13 +1092,7 @@ function renderExecutorView() {
   const modCount = bombState.modules.length;
   const rivets = Array(8).fill(RIVET_SVG).join('');
 
-  // ── On-bomb timer & strikes panel (executor only in 2-player) ──
-  let html = '<div class="bomb-timer-panel">';
-  html += `<div id="bomb-timer" class="bomb-timer-display">${formatTimer(timerValue)}</div>`;
-  html += `<div id="bomb-strikes" class="bomb-strikes-display">${renderStrikesHTML(bombState.strikes, gameMaxStrikes)}</div>`;
-  html += '</div>';
-
-  html += '<div class="bomb-container">';
+  let html = '<div class="bomb-container">';
   html += `<div class="bomb-casing ${shapeClass} ${themeClass} ${textureClass}">`;
 
   // Shape-specific decoration
@@ -1175,6 +1169,11 @@ function renderExecutorView() {
 
   // ── Metal Nameplate ──
   html += '<div class="bomb-info-plate">';
+  // ── On-bomb timer & strikes (executor only in 2-player) ──
+  html += '<div class="bomb-timer-panel">';
+  html += `<div id="bomb-timer" class="bomb-timer-display">${formatTimer(timerValue)}</div>`;
+  html += `<div id="bomb-strikes" class="bomb-strikes-display">${renderStrikesHTML(bombState.strikes, gameMaxStrikes)}</div>`;
+  html += '</div>';
   html += '<span class="plate-corner-bl"></span><span class="plate-corner-br"></span>';
   html += `<div class="plate-protocol">DEVICE IDENTIFICATION</div>`;
   html += `<div class="plate-serial-row"><span class="plate-serial">${bombState.serial}</span></div>`;

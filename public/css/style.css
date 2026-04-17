@@ -3789,7 +3789,9 @@ body.colorblind .wire-color-black .wire-strand {
   background-image: repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(255,255,255,0.15) 5px, rgba(255,255,255,0.15) 6px);
 }
 
-/* Colorblind labels for Simon buttons */
+/* Colorblind-only elements */
+.cb-only { display: none; }
+body.colorblind .cb-only { display: block; }
 .cb-label { display: none; }
 body.colorblind .cb-label {
   display: block; font-size: 14px; font-weight: 900; color: rgba(255,255,255,0.9);

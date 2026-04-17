@@ -1194,7 +1194,7 @@ function renderModule(mod, mi) {
       html += `<div class="bomb-button-cap bomb-button-cap-${mod.color}${mod.solved ? ' solved-btn' : ''}" data-module="${mi}" tabindex="0" role="button" aria-label="${mod.color} button labeled ${mod.label}">`;
       html += `<span class="btn-icon">${icon}</span><span class="btn-label">${mod.label}</span>`;
       html += '</div></div></div>';
-      html += `<div class="bomb-button-info">Color: ${cap(mod.color)} &middot; Label: ${mod.label} &middot; Icon: ${mod.icon}</div>`;
+      html += `<div class="bomb-button-info cb-only">Color: ${cap(mod.color)} &middot; Label: ${mod.label} &middot; Icon: ${mod.icon}</div>`;
       if (isHoldingButton && buttonHoldModule === mi) {
         html += `<div class="holding-indicator">HOLDING... ${stripColor ? `Strip color: <strong style="color:${stripColor}">${cap(stripColor)}</strong> — release at the right time!` : 'waiting for strip...'}</div>`;
       }

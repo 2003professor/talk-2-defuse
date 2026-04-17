@@ -1104,7 +1104,7 @@ function generateManual(bomb) {
   if (bomb.modules.some(m => m.type === 'maze')) {
     manual.chapters.maze = {
       title: 'Maze Module',
-      description: 'The executor must navigate from the white circle (start) to the red triangle (end) on a 6×6 grid. The executor can see their position, start, and end — but NOT the walls. You (the instructor) can identify the maze by the TWO GREEN CIRCLE MARKERS. Find the matching maze below and guide the executor. Moving into a wall causes a STRIKE. (Same for all protocols.)',
+      description: 'The executor moves the red triangle to reach the blue circle (goal) on a 6\u00d76 grid. The executor can see their position and the goal \u2014 but NOT the walls. You (the instructor) can identify the maze by the TWO GREEN CIRCLE MARKERS. Find the matching maze below and guide the executor. Moving into a wall causes a STRIKE. (Same for all protocols.)',
       mazes: MAZE_LAYOUTS.map(l => ({ markers: l.markers, walls: l.walls })),
       note: 'Ask the executor for the marker positions (row, column — top-left is 1,1). Match to one of the 9 mazes below. Then guide step by step: "move up", "move right", etc.',
     };

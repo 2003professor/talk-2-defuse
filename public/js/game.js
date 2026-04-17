@@ -1275,9 +1275,9 @@ function renderModule(mod, mi) {
         for (let c = 0; c < mod.grid; c++) {
           let cellClass = 'maze-cell';
           let content = '';
-          if (r === mod.currentPos.row && c === mod.currentPos.col) { cellClass += ' maze-player'; content = '\u25CF'; }
+          if (r === mod.currentPos.row && c === mod.currentPos.col) { cellClass += ' maze-player'; content = '\u25B2'; }
           else if (r === mod.start.row && c === mod.start.col) { cellClass += ' maze-start'; content = '\u25CB'; }
-          else if (r === mod.end.row && c === mod.end.col) { cellClass += ' maze-end'; content = '\u25B2'; }
+          else if (r === mod.end.row && c === mod.end.col) { cellClass += ' maze-end'; content = '\u25CF'; }
           mod.markers.forEach(m => { if (m.row === r && m.col === c) { cellClass += ' maze-marker'; if (!content) content = '\u25C9'; } });
           html += `<div class="${cellClass}" data-row="${r}" data-col="${c}">${content}</div>`;
         }

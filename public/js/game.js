@@ -1196,7 +1196,12 @@ function renderModule(mod, mi) {
       html += '</div></div></div>';
       html += `<div class="bomb-button-info cb-only">Color: ${cap(mod.color)} &middot; Label: ${mod.label} &middot; Icon: ${mod.icon}</div>`;
       if (isHoldingButton && buttonHoldModule === mi) {
-        html += `<div class="holding-indicator">HOLDING... ${stripColor ? `Strip color: <strong style="color:${stripColor}">${cap(stripColor)}</strong> — release at the right time!` : 'waiting for strip...'}</div>`;
+        if (stripColor) {
+          html += `<div class="button-strip" style="background:${stripColor};box-shadow:0 0 12px ${stripColor}, 0 0 24px ${stripColor}"></div>`;
+          html += `<div class="holding-indicator">HOLDING — Strip is <strong style="color:${stripColor}">${cap(stripColor)}</strong> — release at the right time!</div>`;
+        } else {
+          html += '<div class="holding-indicator">HOLDING... waiting for strip...</div>';
+        }
       }
       html += '</div>';
       break;

@@ -733,7 +733,7 @@ function applyCustomSettingsToUI(cs) {
   if (cs.randomModuleCount) {
     moduleCheckboxes.classList.add('hidden');
     randomActiveLabel.classList.remove('hidden');
-    randomActiveLabel.textContent = `${cs.randomModuleCount} random module${cs.randomModuleCount > 1 ? 's' : ''} will be picked at game start — it's a surprise!`;
+    document.getElementById('random-active-text').textContent = `${cs.randomModuleCount} random module${cs.randomModuleCount > 1 ? 's' : ''} will be picked at game start — it's a surprise!`;
     randomCountSlider.value = cs.randomModuleCount;
     randomCountVal.textContent = cs.randomModuleCount;
   } else {
@@ -780,28 +780,25 @@ const randomActiveLabel = document.getElementById('random-modules-active');
 const moduleCheckboxes = document.querySelector('.custom-checkboxes');
 randomCountSlider.addEventListener('input', () => { randomCountVal.textContent = randomCountSlider.value; });
 
-document.getElementById('btn-random-modules').addEventListener('click', () => {
+function activateRandomMode() {
   const count = +randomCountSlider.value;
-  // Hide checkboxes, show surprise label
   moduleCheckboxes.classList.add('hidden');
   randomActiveLabel.classList.remove('hidden');
-  randomActiveLabel.textContent = `${count} random module${count > 1 ? 's' : ''} will be picked at game start — it's a surprise!`;
-  // Store in customSettings
+  document.getElementById('random-active-text').textContent = `${count} random module${count > 1 ? 's' : ''} will be picked at game start — it's a surprise!`;
   customSettings.randomModuleCount = count;
-  customSettings.modules = ['wires']; // placeholder, server will override
+  customSettings.modules = ['wires'];
   emitCustomSettings();
-  AudioFX.click();
-});
+}
 
-// Clicking any module checkbox cancels random mode
-['custom-mod-button','custom-mod-keypad','custom-mod-simon','custom-mod-morse',
- 'custom-mod-memory','custom-mod-maze','custom-mod-password','custom-mod-knob'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    delete customSettings.randomModuleCount;
-    moduleCheckboxes.classList.remove('hidden');
-    randomActiveLabel.classList.add('hidden');
-  });
-});
+function cancelRandomMode() {
+  delete customSettings.randomModuleCount;
+  moduleCheckboxes.classList.remove('hidden');
+  randomActiveLabel.classList.add('hidden');
+  emitCustomSettings();
+}
+
+document.getElementById('btn-random-modules').addEventListener('click', () => { activateRandomMode(); AudioFX.click(); });
+document.getElementById('btn-cancel-random').addEventListener('click', () => { cancelRandomMode(); AudioFX.click(); });
 
 document.getElementById('btn-ready').addEventListener('click', () => {
   AudioFX.stopMenuMusic();

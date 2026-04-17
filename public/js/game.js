@@ -3957,11 +3957,20 @@ function showKeybindOverlay() {
     <div class="kb-row"><span class="kb-key">↑</span> <span class="kb-key">↓</span> Scroll</div>
     <div class="kb-row"><span class="kb-key">G</span> Toggle magnifier</div>
     <div class="kb-row"><span class="kb-key">M</span> Mute / unmute mic</div>
+    <div class="kb-row"><span class="kb-key">Space</span> Push to talk</div>
     <div class="kb-row"><span class="kb-key">✏️</span> Draw on pages</div>
+    <div class="kb-hint">Click anywhere to dismiss</div>
   `;
   document.body.appendChild(el);
-  setTimeout(() => el.classList.add('kb-fade'), 3500);
-  setTimeout(() => el.remove(), 5000);
+  // Dismiss on click anywhere
+  const dismiss = () => {
+    el.classList.add('kb-fade');
+    setTimeout(() => el.remove(), 800);
+    document.removeEventListener('click', dismiss);
+  };
+  setTimeout(() => document.addEventListener('click', dismiss), 100);
+  // Auto-dismiss after 8s if not clicked
+  setTimeout(() => { if (el.parentElement) { el.classList.add('kb-fade'); setTimeout(() => el.remove(), 800); } }, 8000);
 }
 
 // ══════════════════════ KEYBOARD PAGE NAVIGATION ══════════════════════

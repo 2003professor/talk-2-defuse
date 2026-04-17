@@ -15,6 +15,7 @@ let buttonHoldModule = -1;
 let stripColor = null;
 let chatAutoScroll = true;
 let simonFlashing = false;
+let gameMaxStrikes = 3;
 let customSettings = {
   timer: 300, maxStrikes: 3, wireCount: 4,
   modules: ['wires', 'button', 'keypad'],
@@ -1057,8 +1058,10 @@ socket.on('game-start', async (data) => {
     showKeybindOverlay();
   }
 
+  gameMaxStrikes = data.maxStrikes || (bombState ? bombState.maxStrikes : 3);
   updateTimer(timerValue, 1);
-  updateStrikes(myRole === 'executor' ? bombState.strikes : 0, data.maxStrikes || (bombState ? bombState.maxStrikes : 3));
+  updateStrikes(myRole === 'executor' ? bombState.strikes : 0, gameMaxStrikes);
+  syncTimerStrikesLocation();
 
   document.getElementById('chat-messages').innerHTML = '';
   addSystemMessage('Game started! Communicate through this chat.');
@@ -1163,6 +1166,12 @@ function renderExecutorView() {
 
   // Timer LED on bomb casing
   html += '<div class="bomb-timer-led"></div>';
+
+  // ── On-bomb timer & strikes panel (executor only in 2-player) ──
+  html += '<div class="bomb-timer-panel">';
+  html += `<div id="bomb-timer" class="bomb-timer-display">${formatTimer(timerValue)}</div>`;
+  html += `<div id="bomb-strikes" class="bomb-strikes-display">${renderStrikesHTML(bombState.strikes, gameMaxStrikes)}</div>`;
+  html += '</div>';
 
   // ── Metal Nameplate ──
   html += '<div class="bomb-info-plate">';
@@ -2407,6 +2416,30 @@ socket.on('timer-tick', ({ timer, speed }) => {
   AudioFX.tick(speed || 1);
 });
 
+function formatTimer(s) {
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+function renderStrikesHTML(strikes, max) {
+  let h = '';
+  for (let i = 0; i < max; i++) {
+    const used = i < strikes;
+    h += `<div class="strike-icon${used ? ' used' : ''}">${used ? '✕' : '○'}</div>`;
+  }
+  return h;
+}
+
+// Show/hide topbar timer & strikes based on role (executor sees them on bomb)
+function syncTimerStrikesLocation() {
+  const topTimer = document.querySelector('.topbar-center');
+  const topStrikes = document.getElementById('game-strikes');
+  const isOnBomb = myRole === 'executor' && !isSoloMode;
+  if (topTimer) topTimer.classList.toggle('topbar-hidden', isOnBomb);
+  if (topStrikes) topStrikes.classList.toggle('topbar-hidden', isOnBomb);
+}
+
 function updateTimer(s, speed) {
   const el = document.getElementById('game-timer');
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
@@ -2419,6 +2452,19 @@ function updateTimer(s, speed) {
   if (speed > 1) el.classList.add('speed-up');
   if (s <= 10) el.classList.add('danger');
   else if (s <= 30) el.classList.add('warning');
+
+  // Also update on-bomb timer if it exists
+  const bombTimer = document.getElementById('bomb-timer');
+  if (bombTimer) {
+    let text = `${mm}:${ss}`;
+    if (speed && speed > 1) text += ` x${speed}`;
+    bombTimer.textContent = text;
+    bombTimer.classList.remove('warning', 'danger', 'speed-up');
+    if (speed > 1) bombTimer.classList.add('speed-up');
+    if (s <= 10) bombTimer.classList.add('danger');
+    else if (s <= 30) bombTimer.classList.add('warning');
+  }
+
   // Faux-3D timer urgency atmosphere
   const gm = document.querySelector('.game-main');
   if (gm) {
@@ -2429,13 +2475,14 @@ function updateTimer(s, speed) {
 }
 
 function updateStrikes(strikes, max) {
+  gameMaxStrikes = max;
   const c = document.getElementById('game-strikes');
-  let h = '';
-  for (let i = 0; i < max; i++) {
-    const used = i < strikes;
-    h += `<div class="strike-icon${used ? ' used' : ''}">${used ? '✕' : '○'}</div>`;
-  }
+  const h = renderStrikesHTML(strikes, max);
   c.innerHTML = h;
+
+  // Also update on-bomb strikes if they exist
+  const bombStrikes = document.getElementById('bomb-strikes');
+  if (bombStrikes) bombStrikes.innerHTML = h;
 }
 
 // ══════════════════════ GAME OVER ══════════════════════
@@ -3537,6 +3584,8 @@ socket.on('flip-swap', (data) => {
 
   // Update local state
   myRole = newRole;
+  if (data.maxStrikes) gameMaxStrikes = data.maxStrikes;
+  if (data.bomb && data.bomb.maxStrikes) gameMaxStrikes = data.bomb.maxStrikes;
 
   // After 1.5s, hide overlay and re-render
   setTimeout(() => {
@@ -3553,6 +3602,10 @@ socket.on('flip-swap', (data) => {
       renderInstructorView();
       // Magnifier auto-shows in renderInstructorView via toggleMagnifier
     }
+    syncTimerStrikesLocation();
+    // Re-sync the on-bomb timer/strikes with current values
+    updateTimer(timerValue, timerSpeed);
+    updateStrikes(bombState ? bombState.strikes || 0 : 0, gameMaxStrikes);
   }, 1500);
 });
 

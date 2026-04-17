@@ -183,7 +183,7 @@ function generateBomb(difficulty, customSettings) {
     casingTheme, casingTexture, stencilLabels, modelNumber,
     modules: [],
     timer: isCustom ? customSettings.timer : difficulty === 'easy' ? 420 : difficulty === 'medium' ? 420 : difficulty === 'flip' ? 360 : 300,
-    maxStrikes: isCustom ? customSettings.maxStrikes : 3,
+    maxStrikes: isCustom ? customSettings.maxStrikes : (difficulty === 'easy' || difficulty === 'medium') ? 4 : 3,
     strikes: 0,
     sequenceEnforcement: isCustom ? customSettings.sequenceEnforcement : true,
     strikeSpeedup: isCustom ? customSettings.strikeSpeedup : true,
@@ -1902,9 +1902,9 @@ function addStrike(code, room, message) {
 
   if (room.bomb.strikeSpeedup) {
     // Speed up timer + skip time
-    const speedLevels = { 1: 1.25, 2: 1.5 };
+    const speedLevels = { 1: 1.25, 2: 1.5, 3: 2.0 };
     room.timerSpeed = speedLevels[room.bomb.strikes] || 2;
-    const skipAmounts = { 1: 15, 2: 25 };
+    const skipAmounts = { 1: 15, 2: 25, 3: 35 };
     const skip = skipAmounts[room.bomb.strikes] || 0;
     room.bomb.timer = Math.max(5, room.bomb.timer - skip);
     // Restart timer with new speed

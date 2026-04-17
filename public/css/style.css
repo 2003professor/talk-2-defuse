@@ -3661,14 +3661,15 @@ input[type="text"].input-error {
 
 /* ══════════════════════ ON-BOMB TIMER & STRIKES ══════════════════════ */
 .bomb-timer-panel {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; max-width: 680px; margin: 0 auto 12px;
-  padding: 10px 20px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 16px 8px; padding: 10px 16px;
   background: #0a0c10;
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 6px;
-  box-sizing: border-box;
+  position: relative; z-index: 2;
   box-shadow: inset 0 1px 4px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.03);
+  transform-style: flat;
+  transform: translateZ(8px);
 }
 .bomb-timer-display {
   font-family: var(--font-mono); font-size: 22px; font-weight: 700;
@@ -3681,7 +3682,7 @@ input[type="text"].input-error {
 .bomb-timer-display.danger { color: var(--timer-red); text-shadow: 0 0 16px rgba(248,81,73,0.5); animation: timer-pulse 0.5s ease-in-out infinite; }
 .bomb-timer-display.speed-up { color: var(--accent-orange); text-shadow: 0 0 20px rgba(240,136,62,0.5); animation: speed-pulse 0.35s ease-in-out infinite; }
 .bomb-strikes-display {
-  display: flex; gap: 6px; flex-shrink: 0;
+  display: flex; gap: 6px; flex-shrink: 0; margin-left: 16px;
 }
 .bomb-strikes-display .strike-icon {
   width: 20px; height: 20px; border-radius: 50%;

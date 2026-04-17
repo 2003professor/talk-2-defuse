@@ -2689,8 +2689,8 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
     });
     return;
   }
-  const payload = {};
-  if (gameDifficulty === 'custom') { payload.difficulty = 'custom'; payload.customSettings = customSettings; }
+  const payload = { difficulty: gameDifficulty };
+  if (gameDifficulty === 'custom') { payload.customSettings = customSettings; }
   socket.emit('play-again', payload);
 });
 document.getElementById('btn-change-difficulty').addEventListener('click', () => {
@@ -2721,6 +2721,9 @@ socket.on('back-to-lobby', (state) => {
   renderLobbyPlayers(state);
   isHoldingButton = false; bombState = null; manualData = null; stripColor = null;
   timerSpeed = 1;
+  // Sync client-side difficulty state from server
+  gameDifficulty = state.difficulty || gameDifficulty;
+  if (state.customSettings) customSettings = state.customSettings;
   // Sync custom settings panel
   const customPanel = document.getElementById('custom-settings');
   if (state.difficulty === 'custom') {

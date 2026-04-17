@@ -559,13 +559,15 @@ function buildSimonMap(hasVowel) {
 
 // ── Password Module Word List ─────────────────────────────────
 const PASSWORD_WORDS = [
-  'ABOUT', 'AFTER', 'AGAIN', 'BELOW', 'COULD',
-  'EVERY', 'FIRST', 'FOUND', 'GREAT', 'HOUSE',
-  'LARGE', 'LEARN', 'NEVER', 'OTHER', 'PLACE',
-  'PLANT', 'POINT', 'RIGHT', 'SMALL', 'SOUND',
-  'SPELL', 'STILL', 'STUDY', 'THEIR', 'THERE',
-  'THESE', 'THING', 'THINK', 'THREE', 'WATER',
-  'WHERE', 'WHICH', 'WORLD', 'WOULD', 'WRITE',
+  'ABOUT', 'AFTER', 'AGAIN', 'BELOW', 'BRAIN',
+  'COULD', 'CRANE', 'EVERY', 'EIGHT', 'FIRST',
+  'FOUND', 'GREAT', 'GUARD', 'HOUSE', 'HEART',
+  'LARGE', 'LEARN', 'NEVER', 'NIGHT', 'OTHER',
+  'ORBIT', 'PLACE', 'PLANT', 'POINT', 'RIGHT',
+  'ROUND', 'SMALL', 'SOUND', 'SPELL', 'STILL',
+  'STUDY', 'THEIR', 'THERE', 'THESE', 'THING',
+  'THINK', 'THREE', 'WATER', 'WHERE', 'WHICH',
+  'WORLD', 'WOULD', 'WRITE',
 ];
 
 // ── Maze Layouts (9 mazes, identified by 2 marker positions) ──

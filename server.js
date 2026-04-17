@@ -305,7 +305,23 @@ function generateBomb(difficulty, customSettings) {
       const matches = PASSWORD_WORDS.filter(w => columns.every((col, i) => col.includes(w[i])));
       if (matches.length === 1) break;
       passAttempts++;
-    } while (passAttempts < 20);
+    } while (passAttempts < 100);
+
+    // Guaranteed fallback: rebuild columns ensuring only the target word matches
+    const finalMatches = PASSWORD_WORDS.filter(w => columns.every((col, i) => col.includes(w[i])));
+    if (finalMatches.length !== 1) {
+      columns = [];
+      const otherWords = PASSWORD_WORDS.filter(w => w !== word);
+      for (let i = 0; i < 5; i++) {
+        const correctLetter = word[i];
+        // Exclude ALL letters that appear at this position in any other word
+        const allConflicting = new Set(otherWords.map(w => w[i]));
+        const safePool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => l !== correctLetter && !allConflicting.has(l));
+        const distractors = pickN(safePool.length >= 5 ? safePool : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => l !== correctLetter), 5);
+        columns.push(shuffle([correctLetter, ...distractors]));
+      }
+    }
+
     bomb.modules.push({
       type: 'password', columns, correctWord: word,
       currentLetters: [0, 0, 0, 0, 0], solved: false,

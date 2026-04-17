@@ -248,18 +248,19 @@ function pickSoloModules(difficulty, round) {
   return picked;
 }
 
+let soloSequenceEnforcement = true;
+
 function buildSoloSettings(difficulty, round) {
   const modules = pickSoloModules(difficulty, round);
   const timerMap = { easy: 300, medium: 360, hard: 300 };
-  // More modules = more time, but not linearly
   const baseTime = timerMap[difficulty] || 300;
   const extraTime = Math.max(0, modules.length - 1) * 30;
   return {
     timer: baseTime + extraTime,
     maxStrikes: 3,
-    wireCount: 3 + Math.floor(Math.random() * 3), // 3-5
+    wireCount: 3 + Math.floor(Math.random() * 3),
     modules,
-    sequenceEnforcement: true,
+    sequenceEnforcement: soloSequenceEnforcement,
     strikeSpeedup: difficulty === 'hard',
   };
 }
@@ -282,6 +283,9 @@ document.getElementById('btn-solo').addEventListener('click', () => {
       <button class="btn btn-diff solo-diff-btn" data-diff="medium"><strong>Medium</strong><span>3–5 modules · 3 rounds</span></button>
       <button class="btn btn-diff solo-diff-btn" data-diff="hard"><strong>Hard</strong><span>6–9 modules · 2 rounds</span></button>
     </div>
+    <div class="solo-picker-option">
+      <label><input type="checkbox" id="solo-sequence-toggle" checked> Enforce module sequence</label>
+    </div>
     <button class="btn btn-link solo-picker-cancel" style="margin-top:8px;font-size:12px">Cancel</button>
   `;
   document.querySelector('.action-card').appendChild(picker);
@@ -289,6 +293,7 @@ document.getElementById('btn-solo').addEventListener('click', () => {
   picker.querySelector('.solo-picker-cancel').addEventListener('click', () => picker.remove());
   picker.querySelectorAll('.solo-diff-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      soloSequenceEnforcement = document.getElementById('solo-sequence-toggle').checked;
       soloDifficulty = btn.dataset.diff;
       picker.remove();
       AudioFX.fuseLit();

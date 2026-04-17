@@ -4330,6 +4330,12 @@ body.colorblind .cb-label {
 }
 .solo-picker-buttons .btn-diff strong { display: block; font-size: 14px; margin-bottom: 2px; }
 .solo-picker-buttons .btn-diff span { font-size: 11px; color: var(--text-dim); }
+.solo-picker-option {
+  margin-top: 10px; font-size: 12px; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.solo-picker-option label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.solo-picker-option input[type="checkbox"] { accent-color: var(--accent-orange); }
 
 /* ══════════════════════ RECONNECTION OVERLAY ══════════════════════ */
 .reconnect-overlay {

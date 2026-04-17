@@ -1278,7 +1278,7 @@ io.on('connection', (socket) => {
   socket.on('create-room', ({ playerName }, cb) => {
     const code = generateRoomCode();
     rooms.set(code, {
-      players: [{ id: socket.id, name: playerName, role: null, ready: false }],
+      players: [{ id: socket.id, name: playerName, role: null, ready: false, connected: true }],
       bomb: null, state: 'lobby', difficulty: 'easy',
       customSettings: null, freePass: true,
       timerTimeout: null, timerSpeed: 1, briefingReady: [], createdAt: Date.now(),

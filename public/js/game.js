@@ -3457,6 +3457,8 @@ socket.on('flip-swap', (data) => {
   setTimeout(() => {
     overlay.classList.add('hidden');
     if (newRole === 'executor') {
+      // Hide magnifier — it's an instructor tool
+      if (magActive) toggleMagnifier();
       bombState = data.bomb;
       window._executorRendered = false; // allow entrance animation
       renderExecutorView();
@@ -3464,6 +3466,7 @@ socket.on('flip-swap', (data) => {
       manualData = data.manual;
       currentManualTab = 'index';
       renderInstructorView();
+      // Magnifier auto-shows in renderInstructorView via toggleMagnifier
     }
   }, 1500);
 });

@@ -560,8 +560,9 @@ function buildSimonMap(hasVowel) {
 // ── Password Module Word List ─────────────────────────────────
 const PASSWORD_WORDS = [
   'ABOUT', 'AFTER', 'AGAIN', 'BELOW', 'BRAIN',
-  'COULD', 'CRANE', 'EVERY', 'EIGHT', 'FIRST',
-  'FOUND', 'GREAT', 'GUARD', 'HOUSE', 'HEART',
+  'COULD', 'CRANE', 'CLIMB', 'CHARM', 'EVERY',
+  'EIGHT', 'FIRST', 'FOUND', 'GREAT', 'GUARD',
+  'HOUSE', 'HEART', 'HAVEN',
   'LARGE', 'LEARN', 'NEVER', 'NIGHT', 'OTHER',
   'ORBIT', 'PLACE', 'PLANT', 'POINT', 'RIGHT',
   'ROUND', 'SMALL', 'SOUND', 'SPELL', 'STILL',

@@ -2186,6 +2186,13 @@ input[type="text"].input-error {
   font-size: 11px; color: var(--text-dim); text-align: center;
   font-family: var(--font-mono); letter-spacing: 0.5px;
 }
+.button-hold-timer {
+  font-family: var(--font-mono); font-size: 28px; font-weight: 900;
+  color: var(--accent-green); text-align: center;
+  letter-spacing: 3px; margin: 4px 0;
+  text-shadow: 0 0 8px rgba(63,185,80,0.5);
+  animation: hold-pulse 0.8s ease-in-out infinite;
+}
 .button-strip {
   height: 8px; border-radius: 4px; margin: 6px 0;
   animation: strip-glow 1s ease-in-out infinite alternate;

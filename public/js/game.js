@@ -1290,7 +1290,10 @@ function renderModule(mod, mi) {
       if (isHoldingButton && buttonHoldModule === mi) {
         if (stripColor) {
           html += `<div class="button-strip" style="background:${stripColor};box-shadow:0 0 12px ${stripColor}, 0 0 24px ${stripColor}"></div>`;
-          html += `<div class="holding-indicator">HOLDING — Strip is <strong style="color:${stripColor}">${cap(stripColor)}</strong> — release at the right time!</div>`;
+          const mm = String(Math.floor(timerValue / 60)).padStart(2, '0');
+          const ss = String(Math.floor(timerValue % 60)).padStart(2, '0');
+          html += `<div class="button-hold-timer" id="button-hold-timer">${mm}:${ss}</div>`;
+          html += `<div class="holding-indicator">Strip is <strong style="color:${stripColor}">${cap(stripColor)}</strong> — release at the right time!</div>`;
         } else {
           html += '<div class="holding-indicator">HOLDING... waiting for strip...</div>';
         }
@@ -2476,6 +2479,10 @@ function updateTimer(s, speed) {
     if (s <= 10) bombTimer.classList.add('danger');
     else if (s <= 30) bombTimer.classList.add('warning');
   }
+
+  // Update button hold mini-timer if visible
+  const holdTimer = document.getElementById('button-hold-timer');
+  if (holdTimer) holdTimer.textContent = `${mm}:${ss}`;
 
   // Faux-3D timer urgency atmosphere
   const gm = document.querySelector('.game-main');
